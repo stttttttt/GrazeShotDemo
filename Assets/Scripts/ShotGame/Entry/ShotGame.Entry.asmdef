@@ -1,0 +1,10 @@
+{
+  "name": "ShotGame.Entry",
+  "rootNamespace": "ShotGame.Entry",
+  "references": [
+    "GameFoundation.Core",
+    "GameFoundation.Service",
+    "ShotGame.GameFlow",
+    "Unity.InputSystem"
+  ]
+}

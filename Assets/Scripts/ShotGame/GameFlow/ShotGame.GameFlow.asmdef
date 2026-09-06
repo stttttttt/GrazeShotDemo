@@ -1,0 +1,10 @@
+{
+  "name": "ShotGame.GameFlow",
+  "rootNamespace": "ShotGame.GameFlow",
+  "references": [
+    "GameFoundation.Core",
+    "GameFoundation.Flow",
+    "ShotGame.Gameplay",
+    "ShotGame.Presentation"
+  ]
+}

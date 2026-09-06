@@ -1,0 +1,9 @@
+{
+  "name": "GameFoundation.Service",
+  "rootNamespace": "GameFoundation.Service",
+  "references": [
+    "GameFoundation.Core",
+    "Unity.InputSystem",
+    "UnityEngine.UI"
+  ]
+}

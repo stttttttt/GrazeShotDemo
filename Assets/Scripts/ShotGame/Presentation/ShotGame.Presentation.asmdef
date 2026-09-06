@@ -1,0 +1,10 @@
+{
+  "name": "ShotGame.Presentation",
+  "rootNamespace": "ShotGame.Presentation",
+  "references": [
+    "GameFoundation.Core",
+    "GameFoundation.Service",
+    "ShotGame.Gameplay",
+    "UnityEngine.UI"
+  ]
+}

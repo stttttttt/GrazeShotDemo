@@ -1,0 +1,7 @@
+{
+  "name": "ShotGame.Gameplay",
+  "rootNamespace": "ShotGame.Gameplay",
+  "references": [
+    "GameFoundation.Core"
+  ]
+}

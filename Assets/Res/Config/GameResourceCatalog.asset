@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db1005ddb917673489e8b5682e5715b1, type: 3}
+  m_Name: GameResourceCatalog
+  m_EditorClassIdentifier: GameFoundation.Service::GameFoundation.Service.Resource.GameResourceCatalog
+  _entries:
+  - _id:
+      _value: UI_MainMenu
+    _asset: {fileID: 4415704256351079005, guid: fe4cc8e74c02f2549b9e11f06f7a4b91, type: 3}
+  - _id:
+      _value: UI_Gameplay
+    _asset: {fileID: 4415704256351079005, guid: b8df7d428eebe9c4fb4de5a4427e03eb, type: 3}
