@@ -1,7 +1,10 @@
 using System;
 using System.Threading.Tasks;
 using GameFoundation.Core;
+using ShotGame.Gameplay.Config;
+using ShotGame.Gameplay.Intent;
 using ShotGame.Gameplay.Run;
+using ShotGame.Gameplay.Scene;
 
 namespace ShotGame.GameFlow
 {
@@ -10,39 +13,51 @@ namespace ShotGame.GameFlow
     {
         private readonly Func<AppState, Task> _changeStateAsync;
         private readonly Action<AppState> _queueState;
+        private SceneId _loadedGameplayScene;
 
         public AppFlowContext(
-            GameAppConfig config,
             ISceneService scenes,
             IUIService ui,
             IInputModeService inputMode,
             IGameTimeService time,
+            GameplayContentConfig gameplayContent,
+            GameplayInputAdapter gameplayInput,
             Func<AppState, Task> changeStateAsync,
             Action<AppState> queueState,
             Action quit)
         {
-            Config = config ?? throw new ArgumentNullException(nameof(config));
             Scenes = scenes ?? throw new ArgumentNullException(nameof(scenes));
             UI = ui ?? throw new ArgumentNullException(nameof(ui));
             InputMode = inputMode ?? throw new ArgumentNullException(nameof(inputMode));
             Time = time ?? throw new ArgumentNullException(nameof(time));
+            GameplayContent = gameplayContent != null
+                ? gameplayContent
+                : throw new ArgumentNullException(nameof(gameplayContent));
+            GameplayInput = gameplayInput ?? throw new ArgumentNullException(nameof(gameplayInput));
             _changeStateAsync = changeStateAsync ?? throw new ArgumentNullException(nameof(changeStateAsync));
             _queueState = queueState ?? throw new ArgumentNullException(nameof(queueState));
             Quit = quit ?? throw new ArgumentNullException(nameof(quit));
         }
 
-        public GameAppConfig Config { get; }
         public ISceneService Scenes { get; }
         public IUIService UI { get; }
         public IInputModeService InputMode { get; }
         public IGameTimeService Time { get; }
+        public GameplayContentConfig GameplayContent { get; }
+        public GameplayInputAdapter GameplayInput { get; }
         public Action Quit { get; }
         public GameplaySession Session { get; private set; }
 
         public Task ChangeStateAsync(AppState nextState) => _changeStateAsync(nextState);
         public void QueueState(AppState nextState) => _queueState(nextState);
 
-        public async Task CreateSessionAsync()
+        public void SetLoadedGameplayScene(SceneId sceneId)
+        {
+            if (!sceneId.IsValid) throw new ArgumentException("Gameplay SceneId 无效。", nameof(sceneId));
+            _loadedGameplayScene = sceneId;
+        }
+
+        public async Task CreateSessionAsync(GameplaySceneContext sceneContext)
         {
             if (Session != null) throw new InvalidOperationException("当前已经存在 GameplaySession。");
 
@@ -50,7 +65,7 @@ namespace ShotGame.GameFlow
             Session = session;
             try
             {
-                await session.InitializeAsync();
+                await session.InitializeAsync(sceneContext, GameplayContent, GameplayInput);
             }
             catch
             {
@@ -65,9 +80,11 @@ namespace ShotGame.GameFlow
             Time.SetPaused(false);
             Time.SetTimeScale(1f);
 
+            var gameplayScene = _loadedGameplayScene;
+            _loadedGameplayScene = default;
             DisposeSession();
-            if (Scenes.IsLoaded(Config.GameplayScene))
-                await Scenes.UnloadAsync(Config.GameplayScene);
+            if (gameplayScene.IsValid && Scenes.IsLoaded(gameplayScene))
+                await Scenes.UnloadAsync(gameplayScene);
         }
 
         public void DisposeSession()

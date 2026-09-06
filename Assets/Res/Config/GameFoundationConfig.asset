@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: GameFoundationConfig
   m_EditorClassIdentifier: GameFoundation.Service::GameFoundation.Service.Config.GameFoundationConfig
   _inputActions: {fileID: -944628639613478452, guid: 7a5bc21fc4590844bba59e7f3b49a155, type: 3}
-  _gameplayActionMap: Player
+  _gameplayActionMap: Gameplay
   _uiActionMap: UI
   _audioMixer: {fileID: 0}
   _masterVolumeParameter: MasterVolume

@@ -2,6 +2,7 @@
   "name": "ShotGame.Gameplay",
   "rootNamespace": "ShotGame.Gameplay",
   "references": [
-    "GameFoundation.Core"
+    "GameFoundation.Core",
+    "Unity.InputSystem"
   ]
 }

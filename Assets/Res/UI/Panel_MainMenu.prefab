@@ -367,7 +367,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ShotGame.Presentation::ShotGame.Presentation.UI.MainMenuScreen
   _pageId:
-    _value: 
+    _value: MainMenu
   _layer: 1
   _blocksInput: 1
   _startButton: {fileID: 7450721658079059719}

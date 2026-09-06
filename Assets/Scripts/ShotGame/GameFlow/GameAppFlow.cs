@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 using GameFoundation.Core;
 using GameFoundation.Flow;
 using ShotGame.GameFlow.States;
+using ShotGame.Gameplay.Config;
+using ShotGame.Gameplay.Intent;
+using UnityEngine;
 
 namespace ShotGame.GameFlow
 {
@@ -28,22 +31,21 @@ namespace ShotGame.GameFlow
         private bool _disposed;
 
         public GameAppFlow(
-            GameAppConfig config,
             ISceneService scenes,
             IUIService ui,
             IInputModeService inputMode,
             IGameTimeService time,
+            GameplayContentConfig gameplayContent,
+            GameplayInputAdapter gameplayInput,
             Action quit)
         {
-            if (config == null) throw new ArgumentNullException(nameof(config));
-            config.Validate();
-
             _context = new AppFlowContext(
-                config,
                 scenes,
                 ui,
                 inputMode,
                 time,
+                gameplayContent,
+                gameplayInput,
                 ChangeStateAsync,
                 QueueState,
                 quit);
@@ -76,6 +78,8 @@ namespace ShotGame.GameFlow
         public void Tick()
         {
             ThrowIfDisposed();
+            _context.GameplayInput.Tick();
+            TryHandlePauseRequest();
             _machine.Tick(_context.Time.UnscaledDeltaTime);
             if (CanTickGameplay()) _context.Session.Tick();
         }
@@ -159,6 +163,29 @@ namespace ShotGame.GameFlow
             _machine.Register(new GameplayState(_context));
             _machine.Register(new PauseState(_context));
             _machine.Register(new CloseGameState(_context));
+        }
+
+        private void TryHandlePauseRequest()
+        {
+            if (!_context.GameplayInput.ConsumePauseRequest() || _isChangingState || !_machine.HasCurrentState)
+                return;
+
+            if (_machine.CurrentState == AppState.Gameplay)
+                ChangeStateFromTick(AppState.Pause);
+            else if (_machine.CurrentState == AppState.Pause)
+                ChangeStateFromTick(AppState.Gameplay);
+        }
+
+        private async void ChangeStateFromTick(AppState state)
+        {
+            try
+            {
+                await ChangeStateAsync(state);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
         }
 
         private bool CanTickGameplay()

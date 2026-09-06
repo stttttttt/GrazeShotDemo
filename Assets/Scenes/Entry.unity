@@ -287,7 +287,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ShotGame.Entry::ShotGame.Entry.GameEntry
   _foundationConfig: {fileID: 11400000, guid: cc866c685b902704abcecd0ff9694ee4, type: 2}
   _resourceCatalog: {fileID: 11400000, guid: 71804ab00948dc2499d067212699cfb3, type: 2}
-  _appConfig: {fileID: 11400000, guid: 73e490fcd103ca54d98951fbfb3a3263, type: 2}
+  _gameplayContentConfig: {fileID: 11400000, guid: 3533bf8aaa49e164786fcdc76085076f, type: 2}
   _uiService: {fileID: 1729520813}
 --- !u!4 &390278342
 Transform:
@@ -490,15 +490,23 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: _pages.Array.size
-      value: 2
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: _pages.Array.data[1]._pageId._value
       value: Gameplay
       objectReference: {fileID: 0}
     - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
+      propertyPath: _pages.Array.data[2]._pageId._value
+      value: Pause
+      objectReference: {fileID: 0}
+    - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: _pages.Array.data[1]._resourceId._value
       value: UI_Gameplay
+      objectReference: {fileID: 0}
+    - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
+      propertyPath: _pages.Array.data[2]._resourceId._value
+      value: UI_Pause
       objectReference: {fileID: 0}
     - target: {fileID: 5141935736063251903, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: m_Pivot.x

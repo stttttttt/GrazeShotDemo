@@ -5,6 +5,7 @@
     "GameFoundation.Core",
     "GameFoundation.Service",
     "ShotGame.GameFlow",
+    "ShotGame.Gameplay",
     "Unity.InputSystem"
   ]
 }

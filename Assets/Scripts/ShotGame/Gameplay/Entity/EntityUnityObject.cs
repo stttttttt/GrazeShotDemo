@@ -5,9 +5,12 @@ namespace ShotGame.Gameplay.Entity
 {
     public sealed class EntityUnityObject : IDisposable
     {
-        public EntityUnityObject(GameObject gameObject)
+        private readonly bool _ownsGameObject;
+
+        public EntityUnityObject(GameObject gameObject, bool ownsGameObject = true)
         {
             GameObject = gameObject != null ? gameObject : throw new ArgumentNullException(nameof(gameObject));
+            _ownsGameObject = ownsGameObject;
             Transform = gameObject.transform;
             Rigidbody = gameObject.GetComponent<Rigidbody2D>();
             Colliders = gameObject.GetComponentsInChildren<Collider2D>(true);
@@ -21,7 +24,7 @@ namespace ShotGame.Gameplay.Entity
         public void Dispose()
         {
             if (GameObject == null) return;
-            UnityEngine.Object.Destroy(GameObject);
+            if (_ownsGameObject) UnityEngine.Object.Destroy(GameObject);
             GameObject = null;
         }
     }

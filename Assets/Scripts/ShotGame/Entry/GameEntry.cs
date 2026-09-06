@@ -8,6 +8,8 @@ using GameFoundation.Service.Scene;
 using GameFoundation.Service.Time;
 using GameFoundation.Service.UI;
 using ShotGame.GameFlow;
+using ShotGame.Gameplay.Config;
+using ShotGame.Gameplay.Intent;
 using UnityEngine;
 
 namespace ShotGame.Entry
@@ -20,7 +22,7 @@ namespace ShotGame.Entry
         [Header("应用配置")]
         [SerializeField] private GameFoundationConfig _foundationConfig;
         [SerializeField] private GameResourceCatalog _resourceCatalog;
-        [SerializeField] private GameAppConfig _appConfig;
+        [SerializeField] private GameplayContentConfig _gameplayContentConfig;
 
         [Header("场景内服务")]
         [SerializeField] private UIService _uiService;
@@ -31,6 +33,7 @@ namespace ShotGame.Entry
         private TimerScheduler _timers;
         private AppServiceGroup _appServices;
         private GameAppFlow _appFlow;
+        private GameplayInputAdapter _gameplayInput;
         private bool _started;
         private bool _shuttingDown;
 
@@ -47,8 +50,9 @@ namespace ShotGame.Entry
 
             try
             {
-                ComposeApplication();
+                ComposeServices();
                 await _appServices.InitializeAsync();
+                ComposeGameFlow();
                 await _appFlow.StartAsync();
                 _started = true;
             }
@@ -81,7 +85,7 @@ namespace ShotGame.Entry
             base.OnDestroy();
         }
 
-        private void ComposeApplication()
+        private void ComposeServices()
         {
             _resources = new CatalogResourceService(_resourceCatalog);
             _inputMode = new InputModeService(
@@ -97,12 +101,20 @@ namespace ShotGame.Entry
             ui.Configure(_resources);
 
             _appServices = new AppServiceGroup(scenes, _inputMode, ui);
+        }
+
+        private void ComposeGameFlow()
+        {
+            _gameplayInput = new GameplayInputAdapter(_inputMode.Actions);
+            var scenes = SceneService.Instance;
+            var ui = _uiService != null ? _uiService : UIService.Instance;
             _appFlow = new GameAppFlow(
-                _appConfig,
                 scenes,
                 ui,
                 _inputMode,
                 _time,
+                _gameplayContentConfig,
+                _gameplayInput,
                 Application.Quit);
         }
 
@@ -114,6 +126,9 @@ namespace ShotGame.Entry
             _started = false;
             _appFlow?.Dispose();
             _appFlow = null;
+
+            _gameplayInput?.Dispose();
+            _gameplayInput = null;
 
             _timers?.Dispose();
             _timers = null;
@@ -133,8 +148,8 @@ namespace ShotGame.Entry
                 throw new InvalidOperationException("GameEntry 缺少 GameFoundationConfig。");
             if (_resourceCatalog == null)
                 throw new InvalidOperationException("GameEntry 缺少 GameResourceCatalog。");
-            if (_appConfig == null)
-                throw new InvalidOperationException("GameEntry 缺少 GameAppConfig。");
+            if (_gameplayContentConfig == null)
+                throw new InvalidOperationException("GameEntry 缺少 GameplayContentConfig。");
         }
     }
 }

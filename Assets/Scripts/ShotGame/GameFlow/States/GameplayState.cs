@@ -1,12 +1,14 @@
 using System;
 using System.Threading.Tasks;
 using GameFoundation.Core;
+using ShotGame.Gameplay.Scene;
 
 namespace ShotGame.GameFlow.States
 {
     internal sealed class GameplayState : AppFlowState
     {
         private static readonly UIPageId GameplayHudPage = new UIPageId("Gameplay");
+        private static readonly SceneId GameplayScene = new SceneId("GamePlay");
 
         public GameplayState(AppFlowContext context) : base(context)
         {
@@ -29,8 +31,10 @@ namespace ShotGame.GameFlow.States
             try
             {
                 // Gameplay 首次 Enter 包含场景加载和 Session 的完整创建流程。
-                await Context.Scenes.LoadAdditiveAsync(Context.Config.GameplayScene);
-                await Context.CreateSessionAsync();
+                await Context.Scenes.LoadAdditiveAsync(GameplayScene);
+                Context.SetLoadedGameplayScene(GameplayScene);
+                var sceneContext = GameplaySceneResolver.Resolve(GameplayScene);
+                await Context.CreateSessionAsync(sceneContext);
 
                 await Context.UI.OpenAsync(GameplayHudPage, Context.Session);
                 Context.InputMode.SetMode(InputMode.Gameplay);

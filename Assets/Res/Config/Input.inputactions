@@ -3,189 +3,43 @@
     "name": "Input",
     "maps": [
         {
-            "name": "Battle",
-            "id": "e98785ec-c47a-4fcd-a74f-e2715344c452",
+            "name": "Gameplay",
+            "id": "a0000000-0000-0000-0000-000000000001",
             "actions": [
-                {
-                    "name": "Reload",
-                    "type": "Button",
-                    "id": "cd3a50bf-b96d-465e-bf01-02088d9b2be8",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false,
-                    "priority": 0
-                },
-                {
-                    "name": "Shot",
-                    "type": "Button",
-                    "id": "3dc8d217-d00c-4bcc-bacf-47e852141a41",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false,
-                    "priority": 0
-                },
-                {
-                    "name": "Dodge",
-                    "type": "Button",
-                    "id": "de8823e3-c70d-493f-9f20-ec29930d73b5",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false,
-                    "priority": 0
-                },
-                {
-                    "name": "Move",
-                    "type": "Value",
-                    "id": "61ba9134-2b15-4e64-b854-f281ec55de91",
-                    "expectedControlType": "Vector2",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": true,
-                    "priority": 0
-                },
-                {
-                    "name": "Aim",
-                    "type": "Value",
-                    "id": "5bba0907-312f-4c98-8aaa-ad0435df67ad",
-                    "expectedControlType": "Vector2",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": true,
-                    "priority": 0
-                }
+                { "name": "Aim", "type": "Value", "id": "a0000000-0000-0000-0000-000000000011", "expectedControlType": "Vector2", "processors": "", "interactions": "", "initialStateCheck": true },
+                { "name": "Fire", "type": "Button", "id": "a0000000-0000-0000-0000-000000000012", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "Graze", "type": "Button", "id": "a0000000-0000-0000-0000-000000000013", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "Reload", "type": "Button", "id": "a0000000-0000-0000-0000-000000000014", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "SwitchWeaponStep", "type": "Value", "id": "a0000000-0000-0000-0000-000000000015", "expectedControlType": "Axis", "processors": "", "interactions": "", "initialStateCheck": true },
+                { "name": "WeaponSlot1", "type": "Button", "id": "a0000000-0000-0000-0000-000000000016", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "WeaponSlot2", "type": "Button", "id": "a0000000-0000-0000-0000-000000000017", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "WeaponSlot3", "type": "Button", "id": "a0000000-0000-0000-0000-000000000018", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "QuickSwap", "type": "Button", "id": "a0000000-0000-0000-0000-000000000019", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "Pause", "type": "Button", "id": "a0000000-0000-0000-0000-000000000020", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false }
             ],
             "bindings": [
-                {
-                    "name": "",
-                    "id": "a944e250-b436-454e-8acf-95222f1038f1",
-                    "path": "<Keyboard>/r",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Reload",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "5cd87eba-684c-4c91-a4fa-38e1c8a9d7e3",
-                    "path": "<Mouse>/leftButton",
-                    "interactions": "Press",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Shot",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "d2410571-7f71-4ec7-b67d-75d354052742",
-                    "path": "<Mouse>/rightButton",
-                    "interactions": "Tap",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Dodge",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "WASD",
-                    "id": "3c5b1810-e7d2-4232-b389-ff90ef2f5ef0",
-                    "path": "2DVector",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": true,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "up",
-                    "id": "f38f6757-dca5-4e47-a466-c03498232d84",
-                    "path": "<Keyboard>/w",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "down",
-                    "id": "8944dd32-5c36-461d-8438-361c0fb1eb9e",
-                    "path": "<Keyboard>/s",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "left",
-                    "id": "72e1679b-a177-4f3b-9d21-284d73c48539",
-                    "path": "<Keyboard>/a",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "right",
-                    "id": "143d881b-7f1d-45e9-8460-528dad69890d",
-                    "path": "<Keyboard>/d",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Move",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "",
-                    "id": "5b2d9cf0-c23e-48bc-9a33-66fb14ef1a32",
-                    "path": "<Pointer>/position",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Aim",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                }
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000011", "path": "<Pointer>/position", "interactions": "", "processors": "", "groups": "", "action": "Aim", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000012", "path": "<Mouse>/leftButton", "interactions": "", "processors": "", "groups": "", "action": "Fire", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000013", "path": "<Mouse>/rightButton", "interactions": "Press(behavior=1)", "processors": "", "groups": "", "action": "Graze", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000014", "path": "<Keyboard>/r", "interactions": "", "processors": "", "groups": "", "action": "Reload", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000015", "path": "<Mouse>/scroll/y", "interactions": "", "processors": "", "groups": "", "action": "SwitchWeaponStep", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000016", "path": "<Keyboard>/1", "interactions": "", "processors": "", "groups": "", "action": "WeaponSlot1", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000017", "path": "<Keyboard>/2", "interactions": "", "processors": "", "groups": "", "action": "WeaponSlot2", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000018", "path": "<Keyboard>/3", "interactions": "", "processors": "", "groups": "", "action": "WeaponSlot3", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000019", "path": "<Keyboard>/q", "interactions": "", "processors": "", "groups": "", "action": "QuickSwap", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000020", "path": "<Keyboard>/escape", "interactions": "", "processors": "", "groups": "", "action": "Pause", "isComposite": false, "isPartOfComposite": false }
             ]
         },
         {
             "name": "UI",
-            "id": "f03abf6d-8db8-4433-a025-99a2af5e1f67",
+            "id": "a0000000-0000-0000-0000-000000000002",
             "actions": [
-                {
-                    "name": "Click",
-                    "type": "Button",
-                    "id": "5b7afa18-f318-4935-8919-a8f0f3a614dd",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false,
-                    "priority": 0
-                }
+                { "name": "Click", "type": "Button", "id": "a0000000-0000-0000-0000-000000000021", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
+                { "name": "Cancel", "type": "Button", "id": "a0000000-0000-0000-0000-000000000022", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false }
             ],
             "bindings": [
-                {
-                    "name": "",
-                    "id": "cf8e165d-6aab-4de1-a995-dd5ee66a6ded",
-                    "path": "<Mouse>/leftButton",
-                    "interactions": "Press",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Click",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                }
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000021", "path": "<Mouse>/leftButton", "interactions": "", "processors": "", "groups": "", "action": "Click", "isComposite": false, "isPartOfComposite": false },
+                { "name": "", "id": "b0000000-0000-0000-0000-000000000022", "path": "<Keyboard>/escape", "interactions": "", "processors": "", "groups": "", "action": "Cancel", "isComposite": false, "isPartOfComposite": false }
             ]
         }
     ],

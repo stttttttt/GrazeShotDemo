@@ -1,8 +1,12 @@
 using System;
 using System.Threading.Tasks;
 using GameFoundation.Core;
+using ShotGame.Gameplay.Character;
+using ShotGame.Gameplay.Config;
 using ShotGame.Gameplay.Entity;
 using ShotGame.Gameplay.Facts;
+using ShotGame.Gameplay.Intent;
+using ShotGame.Gameplay.Scene;
 using ShotGame.Gameplay.World;
 
 namespace ShotGame.Gameplay.Run
@@ -11,6 +15,7 @@ namespace ShotGame.Gameplay.Run
     public sealed class GameplaySession : IDisposable
     {
         private readonly IGameTimeService _time;
+        private GameplayInputAdapter _input;
         private bool _disposed;
 
         public GameplaySession(IGameTimeService time)
@@ -23,18 +28,48 @@ namespace ShotGame.Gameplay.Run
         public GameplayWorld World { get; private set; }
         public EntitySpawner Spawner { get; private set; }
         public GameplayRun Run { get; private set; }
+        public GameplaySceneContext SceneContext { get; private set; }
+        public EntityId PlayerEntityId { get; private set; }
 
-        public Task InitializeAsync()
+        public Task InitializeAsync(GameplaySceneContext sceneContext, GameplayContentConfig contentConfig,
+            GameplayInputAdapter input)
         {
             ThrowIfDisposed();
             if (IsInitialized) throw new InvalidOperationException("GameplaySession 不能重复初始化。");
 
             try
             {
+                SceneContext = sceneContext ?? throw new ArgumentNullException(nameof(sceneContext));
+                contentConfig = contentConfig != null
+                    ? contentConfig
+                    : throw new ArgumentNullException(nameof(contentConfig));
+                _input = input ?? throw new ArgumentNullException(nameof(input));
+                contentConfig.Validate();
                 Facts = new GameplayFactHub();
                 World = new GameplayWorld(Facts);
                 Spawner = new EntitySpawner(World, Facts, new EntityIdGenerator());
                 Run = new GameplayRun(World, Facts, _time);
+
+                for (var i = 0; i < SceneContext.SceneEntities.Count; i++)
+                    Spawner.RegisterSceneEntity(SceneContext.SceneEntities[i]);
+
+                var player = Spawner.SpawnPlayer(contentConfig.PlayerPrefab,
+                    SceneContext.PlayerSpawn.position, SceneContext.PlayerSpawn.rotation, SceneContext.WorldRoot);
+                PlayerEntityId = player.Id;
+                _input.Bind(player.GetComponent<PlayerInputComponent>(), player.UnityObject.Transform,
+                    SceneContext.GameplayCamera);
+
+                if (contentConfig.SpawnTestEnemy)
+                {
+                    var count = Math.Min(contentConfig.TestEnemyCount, SceneContext.EnemySpawns.Count);
+                    for (var i = 0; i < count; i++)
+                    {
+                        var spawn = SceneContext.EnemySpawns[i];
+                        Spawner.SpawnEnemy(contentConfig.TestEnemyPrefab, spawn.position, spawn.rotation,
+                            PlayerEntityId, contentConfig.TestEnemyAttackRange, SceneContext.WorldRoot);
+                    }
+                }
+
                 Run.Start();
                 IsInitialized = true;
                 return Task.CompletedTask;
@@ -74,6 +109,9 @@ namespace ShotGame.Gameplay.Run
 
         private void DisposeObjects()
         {
+            // 输入由应用级适配器持有，Session 只解除本局玩家绑定。
+            _input?.Unbind();
+            _input = null;
             Run?.Dispose();
             Run = null;
             Spawner?.Dispose();
@@ -82,6 +120,8 @@ namespace ShotGame.Gameplay.Run
             World = null;
             Facts?.Dispose();
             Facts = null;
+            SceneContext = null;
+            PlayerEntityId = default;
         }
 
         private void ThrowIfDisposed()

@@ -1,0 +1,15 @@
+{
+  "name": "ShotGame.Editor",
+  "rootNamespace": "ShotGame.Editor",
+  "references": [
+    "GameFoundation.Core",
+    "GameFoundation.Service",
+    "ShotGame.Entry",
+    "ShotGame.GameFlow",
+    "ShotGame.Gameplay",
+    "ShotGame.Presentation",
+    "Unity.InputSystem",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": ["Editor"]
+}
