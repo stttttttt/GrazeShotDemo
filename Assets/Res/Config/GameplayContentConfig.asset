@@ -17,12 +17,18 @@ MonoBehaviour:
   _spawnTestEnemy: 1
   _testEnemyCount: 1
   _testEnemyAttackRange: 5
+  _playerInitialWeapons:
+  - {fileID: 11400000, guid: 33c75b84a5114d4d9fd18aae068ca070, type: 2}
+  - {fileID: 11400000, guid: a29d88edae294176a46f208aee78d690, type: 2}
+  _testEnemyWeapon: {fileID: 11400000, guid: 6cd671a32eb443d59a7a62186ff020b1, type: 2}
+  _playerMaxRecoilSpeed: 12
+  _playerRecoilRecovery: 8
   _playerTargetMask:
     serializedVersion: 2
-    m_Bits: 4608
+    m_Bits: 512
   _enemyTargetMask:
     serializedVersion: 2
-    m_Bits: 4352
+    m_Bits: 256
   _grazeProjectileMask:
     serializedVersion: 2
     m_Bits: 2048

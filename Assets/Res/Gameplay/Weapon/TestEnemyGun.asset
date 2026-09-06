@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4587e8a059014b10a2fe46a0482fb2e5, type: 3}
+  m_Name: TestEnemyGun
+  m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Weapon.WeaponConfig
+  _displayName: 测试敌弹
+  _fireMode: 1
+  _magazineSize: 8
+  _initialReserveAmmo: 999
+  _fireInterval: 0.8
+  _reloadDuration: 1.5
+  _projectilePrefab: {fileID: 721341589214670001, guid: 4acb435f4b294ff3ab815ce8acffe4c3, type: 3}
+  _projectileCount: 1
+  _spreadAngle: 0
+  _damage: 10
+  _projectileSpeed: 6
+  _projectileLifetime: 4
+  _projectileRadius: 0.13
+  _recoilImpulse: 0
+  _muzzleOffset: 0.5

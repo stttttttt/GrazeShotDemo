@@ -26,8 +26,8 @@ namespace ShotGame.Gameplay.Character
         {
             var intent = _intentSource.GetIntent();
             _movement?.SetMoveDirection(intent.MoveDirection);
-            _weaponUse?.ApplyIntent(intent);
             _equipment?.ApplyIntent(intent);
+            _weaponUse?.ApplyIntent(intent);
             _graze?.ApplyIntent(intent.GrazePressed);
             _intentSource.ClearFrameIntent();
         }

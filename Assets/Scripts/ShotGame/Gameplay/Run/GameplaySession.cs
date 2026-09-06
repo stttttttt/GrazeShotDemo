@@ -54,7 +54,10 @@ namespace ShotGame.Gameplay.Run
                     Spawner.RegisterSceneEntity(SceneContext.SceneEntities[i]);
 
                 var player = Spawner.SpawnPlayer(contentConfig.PlayerPrefab,
-                    SceneContext.PlayerSpawn.position, SceneContext.PlayerSpawn.rotation, SceneContext.WorldRoot);
+                    SceneContext.PlayerSpawn.position, SceneContext.PlayerSpawn.rotation,
+                    contentConfig.PlayerInitialWeapons, contentConfig.PlayerTargetMask, contentConfig.WallMask,
+                    contentConfig.PlayerMaxRecoilSpeed, contentConfig.PlayerRecoilRecovery,
+                    SceneContext.WorldRoot);
                 PlayerEntityId = player.Id;
                 _input.Bind(player.GetComponent<PlayerInputComponent>(), player.UnityObject.Transform,
                     SceneContext.GameplayCamera);
@@ -66,7 +69,8 @@ namespace ShotGame.Gameplay.Run
                     {
                         var spawn = SceneContext.EnemySpawns[i];
                         Spawner.SpawnEnemy(contentConfig.TestEnemyPrefab, spawn.position, spawn.rotation,
-                            PlayerEntityId, contentConfig.TestEnemyAttackRange, SceneContext.WorldRoot);
+                            PlayerEntityId, contentConfig.TestEnemyWeapon, contentConfig.EnemyTargetMask,
+                            contentConfig.WallMask, contentConfig.TestEnemyAttackRange, SceneContext.WorldRoot);
                     }
                 }
 

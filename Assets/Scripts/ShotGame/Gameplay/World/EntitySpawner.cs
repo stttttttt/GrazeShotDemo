@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using ShotGame.Gameplay.Character;
 using ShotGame.Gameplay.Entity;
 using ShotGame.Gameplay.Facts;
 using ShotGame.Gameplay.Intent;
+using ShotGame.Gameplay.Projectile;
 using ShotGame.Gameplay.Scene;
+using ShotGame.Gameplay.Weapon;
 using UnityEngine;
 using GameplayEntity = ShotGame.Gameplay.Entity.Entity;
 using GameEntityId = ShotGame.Gameplay.Entity.EntityId;
@@ -26,40 +29,61 @@ namespace ShotGame.Gameplay.World
         }
 
         public CharacterEntity SpawnPlayer(GameObject prefab, Vector3 position, Quaternion rotation,
-            Transform parent = null)
+            IReadOnlyList<WeaponConfig> weapons, LayerMask targetMask, LayerMask wallMask,
+            float maxRecoilSpeed, float recoilRecovery, Transform parent = null)
         {
             return SpawnCharacter(prefab, position, rotation, parent, EntityCategory.Player, EntityTeam.Player,
                 character =>
                 {
                     var attributes = character.AddComponent(new AttributeComponent());
                     character.AddComponent(new PlayerInputComponent());
-                    character.AddComponent(new GameplayCharacterController());
-                    character.AddComponent(new MovementComponent(attributes));
-                    character.AddComponent(new WeaponUseComponent());
-                    character.AddComponent(new EquipmentComponent());
+                    var movement = character.AddComponent(new MovementComponent(attributes,
+                        maxRecoilSpeed, recoilRecovery));
+                    var equipment = character.AddComponent(new EquipmentComponent(weapons));
+                    var execution = new WeaponExecution(this, movement, _facts, parent);
+                    character.AddComponent(new WeaponUseComponent(equipment, attributes, execution,
+                        _facts, targetMask, wallMask));
                     character.AddComponent(new GrazeComponent());
+                    character.AddComponent(new GameplayCharacterController());
                 });
         }
 
         public CharacterEntity SpawnEnemy(GameObject prefab, Vector3 position, Quaternion rotation,
-            GameEntityId targetId, float attackRange = 5f, Transform parent = null)
+            GameEntityId targetId, WeaponConfig weapon, LayerMask targetMask, LayerMask wallMask,
+            float attackRange = 5f, Transform parent = null)
         {
             return SpawnCharacter(prefab, position, rotation, parent, EntityCategory.Enemy, EntityTeam.Enemy,
                 character =>
                 {
                     var attributes = character.AddComponent(new AttributeComponent());
                     character.AddComponent(new AIComponent(_world, targetId, attackRange));
+                    var movement = character.AddComponent(new MovementComponent(attributes));
+                    var equipment = character.AddComponent(new EquipmentComponent(new[] { weapon }));
+                    var execution = new WeaponExecution(this, movement, _facts, parent);
+                    character.AddComponent(new WeaponUseComponent(equipment, attributes, execution,
+                        _facts, targetMask, wallMask));
                     character.AddComponent(new GameplayCharacterController());
-                    character.AddComponent(new MovementComponent(attributes));
-                    character.AddComponent(new WeaponUseComponent());
                 });
+        }
+
+        public GameplayEntity SpawnProjectile(in ProjectileSpawnData data)
+        {
+            ThrowIfDisposed();
+            if (data.Prefab == null) throw new ArgumentNullException(nameof(data), "弹丸 Prefab 为空。");
+            if (!data.SourceId.IsValid) throw new ArgumentException("弹丸 SourceId 无效。", nameof(data));
+            if (data.Direction.sqrMagnitude <= 0.0001f) throw new ArgumentException("弹丸方向无效。", nameof(data));
+
+            var angle = Mathf.Atan2(data.Direction.y, data.Direction.x) * Mathf.Rad2Deg;
+            var unityObject = CreateUnityObject(data.Prefab, data.Position,
+                Quaternion.Euler(0f, 0f, angle), data.Parent);
+            var entity = new GameplayEntity(_idGenerator.Next(), EntityCategory.Projectile,
+                data.SourceTeam, unityObject);
+            var spawnData = data;
+            return Register(entity, item => item.AddComponent(new ProjectileComponent(_world, this, spawnData)));
         }
 
         public GameplayEntity SpawnWeapon(GameObject prefab, Vector3 position, Quaternion rotation, EntityTeam team,
             Transform parent = null) => SpawnSimple(prefab, position, rotation, parent, EntityCategory.Weapon, team);
-
-        public GameplayEntity SpawnProjectile(GameObject prefab, Vector3 position, Quaternion rotation, EntityTeam team,
-            Transform parent = null) => SpawnSimple(prefab, position, rotation, parent, EntityCategory.Projectile, team);
 
         public GameplayEntity SpawnPickup(GameObject prefab, Vector3 position, Quaternion rotation,
             Transform parent = null) =>

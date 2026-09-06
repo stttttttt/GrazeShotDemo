@@ -1,610 +1,576 @@
-# 第三部分：Gameplay 场景接入与输入驱动计划
+# 第三部分：Gameplay 场景接入与输入驱动
 
-> 状态：运行时代码、配置、Prefab 与灰盒场景已生成；Unity 批处理编译通过，等待 Play Mode 手动体验验收。
+> 状态：已实现。
 >
-> 本阶段目标不是完成武器和擦弹规则，而是把第二部分的纯逻辑框架接入真实 Gameplay 场景，使玩家、测试敌人和输入意图能够随一局游戏正确创建、更新和释放。
+> 第三阶段已经把第二阶段的纯 C# Gameplay 框架接入真实 Unity 场景，并完成玩家、测试敌人、场景实体、输入、暂停和 Session 生命周期的基础闭环。Unity 运行时与 Editor 程序集编译通过；文末保留需要在 Play Mode 中人工体验的验收项。
 
-## 1. 阶段目标
+## 1. 阶段目标与完成结果
 
-第三部分需要打通以下运行链路：
+本阶段解决的是“应用流程如何找到 Unity 场景内容，并把输入交给纯 C# Gameplay”的问题，不包含真正的武器射击、弹丸伤害和擦弹结算。
+
+当前已经打通以下链路：
 
 ```mermaid
 flowchart TD
+    ENTRY[GameEntry]
+    FLOW[GameAppFlow]
     STATE[GameplayState]
     LOAD[加载并激活 GamePlay 场景]
-    RESOLVE[解析 GameplaySceneContext]
-    SESSION[创建 GameplaySession]
-    PLAYER[生成 Player Entity]
-    ENEMY[生成测试 Enemy Entity]
+    RESOLVE[GameplaySceneResolver]
+    CONTEXT[GameplaySceneContext]
+    SESSION[GameplaySession]
+    WORLD[GameplayWorld]
+    PLAYER[Player Entity]
+    ENEMY[Test Enemy Entity]
     INPUT[GameplayInputAdapter]
     INTENT[PlayerInputComponent]
-    CONTROLLER[CharacterController]
+    CONTROL[CharacterController]
     ABILITY[角色能力组件]
 
-    STATE --> LOAD --> RESOLVE --> SESSION
+    ENTRY --> FLOW --> STATE --> LOAD --> RESOLVE --> CONTEXT --> SESSION
+    SESSION --> WORLD
     SESSION --> PLAYER
     SESSION --> ENEMY
-    INPUT --> INTENT --> CONTROLLER --> ABILITY
+    INPUT --> INTENT --> CONTROL --> ABILITY
 ```
 
-完成后应达到：
+完成结果：
 
-- 点击开始游戏后进入灰盒战场。
-- Session 初始化时生成玩家和至少一个测试敌人。
-- 测试敌人通过玩家 `EntityId` 追击并进入攻击状态。
-- 鼠标和键盘输入能够写入 `PlayerInputComponent`。
-- `CharacterController` 能消费瞄准、开火、换弹、切枪和擦弹意图。
-- 暂停、返回菜单、重新开始不会残留输入回调和旧 Entity。
+- 主菜单点击开始后，由 `GameplayState` 加载 `GamePlay` 场景。
+- 场景加载完成后解析唯一的 `GameplaySceneBindings`。
+- 每局创建一个 `GameplaySession`、一个玩家和配置数量的测试敌人。
+- 测试敌人通过玩家 `EntityId` 获取目标，而不是持有玩家对象引用。
+- Input System 输入经 `GameplayInputAdapter` 写入 `PlayerInputComponent`。
+- `CharacterController` 消费玩家或 AI 产生的统一 `PawnIntent`。
+- `GameEntry` 统一驱动应用流程、Session Tick 和 FixedTick。
+- 暂停与恢复复用同一个 Session，不重新加载场景或生成实体。
+- 退出 Gameplay 时先解除输入绑定，再释放 World 和卸载场景。
 
 ## 2. 本阶段边界
 
-### 2.1 本阶段实现
+### 2.1 已实现
 
-- Gameplay 场景层级约定。
-- 纯 C# 场景引用解析。
+- Gameplay 灰盒场景与固定层级。
+- 场景引用的集中配置、校验和一次性解析。
 - Gameplay 内容配置 Asset。
-- Session 初始化参数调整。
-- 玩家和测试敌人的首次生成。
-- Input Action Map 整理。
-- Input System 到 `PlayerInputComponent` 的适配。
-- Pause 输入到 AppFlow 的连接。
-- 初始化失败回滚和重复进入验证。
+- 预摆放墙体注册和运行时实体生成。
+- 玩家与测试敌人生成。
+- `Gameplay` / `UI` Input Action Map。
+- 瞄准、开火、擦弹、换弹、切枪和暂停的输入意图接入。
+- Gameplay/Pause 状态切换。
+- Session 初始化失败回滚、退出和重复进入所需的清理逻辑。
+- Unity Editor 一键生成第三阶段资源的工具。
 
-### 2.2 本阶段不实现
+### 2.2 尚未实现
 
-- 真正的武器开火、射速、弹药和换弹过程。
-- 子弹生成、弹道和伤害命中。
-- 开火后坐力。
-- 擦弹判定、充能和慢动作。
-- 正式波次生成。
-- 掉落物、奖励和结算 UI。
+- 武器运行时、弹药、射速和换弹过程。
+- 弹丸或射线生成与命中。
+- 伤害和死亡的完整实战闭环。
+- 开火后坐力与玩家实际位移。
+- 擦弹判定、充能、慢动作和增益消费。
+- 正式波次、掉落物、奖励和结算 UI。
 
-本阶段按下 Fire 后，只要求 `WeaponUseComponent` 正确收到意图并触发现有的 `FireRequested` 接入口。
+当前 Fire、Reload、SwitchWeapon、Graze 均已到达对应角色组件，但部分组件仍是下一阶段的功能入口。
 
-## 3. 设计约束
+## 3. 关键设计约束
 
-- 继续由 `GameEntry` 作为唯一 Gameplay Mono 更新入口。
-- 场景允许使用不含 `Update` 的被动 MonoBehaviour 保存序列化引用；当前只有 `GameplaySceneBindings` 和 `SceneEntityAuthoring`。
-- Player、Enemy、Input、SceneContext 的运行逻辑仍为普通 C# 对象。
-- `GameplaySceneContext`、输入适配器和 Session 都是普通 C# 对象。
-- Entity Prefab 只需要 Unity 内置组件，例如 Transform、SpriteRenderer、Rigidbody2D、Collider2D。
-- 场景对象不写入 ScriptableObject；配置 Asset 只保存 Prefab 和数值。
-- 不使用 `GameObject.Find` 在每帧查找对象，只在 Session 初始化时解析一次场景。
-- 场景、配置或 Action 缺失时立即抛出带具体名称的异常，不静默降级。
+- `GameEntry` 是应用总入口，也是唯一统一驱动 `Update` / `FixedUpdate` 的 Gameplay Mono。
+- Unity 场景可以使用少量被动 MonoBehaviour 保存序列化引用；它们不包含 Update 和业务状态机。
+- `GameplaySceneContext`、Resolver、Session、World、Entity、输入适配器和角色能力均为普通 C# 对象。
+- Entity Prefab 只挂 Unity 表现与物理组件，不挂一套平行的 Mono Gameplay 逻辑。
+- 场景对象不写入 ScriptableObject；配置 Asset 只保存 Prefab、LayerMask 和数值。
+- 场景结构只在进入 Gameplay 时解析一次，不在每帧使用 `GameObject.Find`。
+- 场景、配置、Action 或关键引用缺失时立即抛出带名称的异常，不静默降级。
+- Gameplay 层使用 `EntityId` 传递目标身份；实际碰撞对象通过 `ColliderEntityMap` 映射回 Entity。
+- 以小游戏 Demo 为目标，保持直接调用和清晰依赖，不引入 DI 容器、复杂事件总线或纯 ECS 调度。
 
-## 4. 当前问题
+## 4. Mono 与纯 C# 的边界
 
-### 4.1 Input Action Map 名称不一致
+第三阶段新增的场景 Mono 只有两类：
 
-当前配置实际为：
+| 类型 | 是否 Mono | 职责 |
+| --- | --- | --- |
+| `GameplaySceneBindings` | 是 | 集中保存场景关键引用并创建 Context |
+| `SceneEntityAuthoring` | 是 | 为预摆放物体声明 Category 和 Team |
+| `GameplaySceneContext` | 否 | 保存已经校验过的场景引用 |
+| `GameplaySceneResolver` | 否 | 从已加载场景解析唯一 Bindings |
+| `GameplayInputAdapter` | 否 | 将 Input System 状态写成角色意图 |
+| `GameplaySession` | 否 | 管理一局游戏的创建、更新和释放 |
 
-```text
-GameFoundationConfig._gameplayActionMap = Player
-Res/Config/Input.inputactions 中的 Map = Battle
-```
+`GameplaySceneBindings` 与 `SceneEntityAuthoring` 都是 Unity 序列化桥梁，不拥有 Gameplay 规则。
 
-`GameFoundationConfig.asset` 引用的是 `Res/Config/Input.inputactions`，因此进入 Gameplay 并切换输入模式时会找不到 `Player` Map。
+## 5. GamePlay 场景结构
 
-第三部分统一为：
-
-```text
-Gameplay Action Map = Gameplay
-UI Action Map       = UI
-```
-
-### 4.2 当前 Action 与玩法文档不一致
-
-现有 `Battle` Map 包含 `Shot`、`Dodge` 和 `Move`。正式玩法约定为：
-
-- `Shot` 改为 `Fire`。
-- `Dodge` 改为 `Graze`。
-- 删除玩家 WASD `Move`，玩家只通过射击后坐力位移。
-- 补充切枪、快速换枪和暂停 Action。
-
-### 4.3 Session 尚未绑定场景内容
-
-当前 `GameplaySession.InitializeAsync()` 只创建 World、Spawner、Run 和 FactHub，没有：
-
-- Gameplay 场景引用。
-- 玩家 Prefab。
-- 玩家出生点。
-- 测试敌人 Prefab 与出生点。
-- 输入适配器。
-
-第三部分负责补齐这些依赖，但不把场景解析职责塞进 Entity 或 GameplayWorld。
-
-## 5. 场景层级约定
-
-`GamePlay.unity` 使用简单、固定、可读的层级：
+当前 `Assets/Scenes/GamePlay.unity` 使用以下灰盒层级：
 
 ```text
-GameplayRoot
+GameplayRoot                       GameplaySceneBindings
 ├── WorldRoot
+│   ├── Wall_Top                  SceneEntityAuthoring: Wall / Neutral
+│   ├── Wall_Bottom               SceneEntityAuthoring: Wall / Neutral
+│   ├── Wall_Left                 SceneEntityAuthoring: Wall / Neutral
+│   └── Wall_Right                SceneEntityAuthoring: Wall / Neutral
 ├── PresentationRoot
 ├── SpawnPoints
 │   ├── PlayerSpawn
 │   └── EnemySpawns
-│       ├── EnemySpawn_01
-│       └── EnemySpawn_02（可选）
+│       └── EnemySpawn_01
 ├── DropRoot
-├── ArenaBounds
-└── GameplayCamera
+├── ArenaBounds                   BoxCollider2D
+└── GameplayCamera                Camera
 ```
 
 节点职责：
 
-| 节点 | 类型/要求 | 用途 |
-| --- | --- | --- |
-| `GameplayRoot` | 唯一根节点 | 场景解析入口 |
-| `WorldRoot` | Transform | 玩家、敌人、子弹和墙体的父节点 |
-| `PresentationRoot` | Transform | 后续特效和场景表现父节点 |
-| `PlayerSpawn` | Transform，唯一 | 玩家出生位置与朝向 |
-| `EnemySpawns` | Transform | 测试敌人和后续波次出生点容器 |
-| `DropRoot` | Transform | 后续掉落物父节点 |
-| `ArenaBounds` | BoxCollider2D | 战场合法范围 |
-| `GameplayCamera` | Camera | 鼠标屏幕坐标转世界瞄准方向 |
+| 节点 | 用途 |
+| --- | --- |
+| `GameplayRoot` | 场景内容总根节点和唯一 Bindings 所在对象 |
+| `WorldRoot` | 玩家、敌人、弹丸和墙体的父节点 |
+| `PresentationRoot` | 后续特效、飘字等表现对象的父节点 |
+| `PlayerSpawn` | 玩家出生位置和朝向 |
+| `EnemySpawns` | 测试敌人以及后续波次的出生点集合 |
+| `DropRoot` | 后续掉落物父节点 |
+| `ArenaBounds` | 战场范围引用 |
+| `GameplayCamera` | 屏幕坐标转世界瞄准方向使用的相机 |
 
-`GameplayRoot` 挂载唯一的 `GameplaySceneBindings`，集中序列化以上引用。Resolver 只在 Session 初始化时扫描一次该组件，不依赖节点名称查找；层级名称仅用于编辑器可读性。
+Gameplay 相机没有额外 `AudioListener`，避免与常驻 Entry 场景的监听器重复。
 
-## 6. GameplaySceneContext
+## 6. 场景引用入口
 
-新增纯 C# `GameplaySceneContext`，只保存已经解析好的引用：
+### 6.1 GameplaySceneBindings
 
-```csharp
-public sealed class GameplaySceneContext
-{
-    public Scene Scene { get; }
-    public Transform WorldRoot { get; }
-    public Transform PresentationRoot { get; }
-    public Transform PlayerSpawn { get; }
-    public IReadOnlyList<Transform> EnemySpawns { get; }
-    public Transform DropRoot { get; }
-    public BoxCollider2D ArenaBounds { get; }
-    public Camera GameplayCamera { get; }
-}
+`GameplaySceneBindings` 集中序列化：
+
+- `WorldRoot`
+- `PresentationRoot`
+- `DropRoot`
+- `PlayerSpawn`
+- `EnemySpawns`
+- `GameplayCamera`
+- `ArenaBounds`
+- `SceneEntities`
+
+创建 Context 前会检查：
+
+- 所有必需引用不为空。
+- 至少存在一个敌人出生点。
+- 关键引用属于当前 GamePlay 场景。
+
+层级名称用于编辑器可读性；运行时代码依赖序列化引用，不依赖名称查找。
+
+### 6.2 GameplaySceneContext
+
+`GameplaySceneContext` 是只读的纯 C# 场景数据包，包含：
+
+```text
+Scene
+WorldRoot
+PresentationRoot
+PlayerSpawn
+EnemySpawns
+DropRoot
+ArenaBounds
+GameplayCamera
+SceneEntities
 ```
 
-职责边界：
+它只保存引用，不生成 Entity、不更新场景节点，也不负责卸载场景。
 
-- 只保存引用，不负责生成 Entity。
-- 不负责每帧查找或刷新节点。
-- 不持有 GameplayRun 状态。
-- 不主动销毁场景对象，场景生命周期仍由 `SceneService` 管理。
-
-## 7. GameplaySceneResolver
-
-新增纯 C# `GameplaySceneResolver`：
-
-```csharp
-GameplaySceneContext Resolve(SceneId sceneId)
-```
+### 6.3 GameplaySceneResolver
 
 解析流程：
 
-1. 通过 `SceneManager.GetSceneByName(sceneId.Value)` 获取已加载场景。
-2. 验证场景有效且已经加载。
-3. 从场景 Root GameObjects 中扫描 `GameplaySceneBindings`。
-4. 校验该场景中恰好存在一个 Bindings。
-5. 由 Bindings 校验 PlayerSpawn、至少一个 EnemySpawn、Camera、ArenaBounds 和所有引用均属于当前场景。
-6. 创建不可变的 `GameplaySceneContext`。
-
-不扩展 `ISceneService` 去承载 Gameplay 场景结构，避免 Foundation 层知道具体游戏节点。
-
-## 8. GameplayContentConfig
-
-新增 `ScriptableObject`：
-
-```csharp
-[CreateAssetMenu(
-    fileName = "GameplayContentConfig",
-    menuName = "Shot Game/Gameplay Content Config")]
-public sealed class GameplayContentConfig : ScriptableObject
-{
-    GameObject PlayerPrefab;
-    GameObject TestEnemyPrefab;
-    bool SpawnTestEnemy;
-    int TestEnemyCount;
-    float TestEnemyAttackRange;
-}
+```text
+SceneId("GamePlay")
+  → SceneManager.GetSceneByName
+  → 验证场景有效且已加载
+  → 扫描场景 Root 下的 GameplaySceneBindings
+  → 验证数量恰好为 1
+  → Bindings.Validate
+  → 创建 GameplaySceneContext
 ```
 
-建议首版字段：
+Foundation 的 `ISceneService` 只负责通用场景加载，不感知具体 Gameplay 节点。
 
-| 字段 | 建议默认值 | 说明 |
-| --- | ---: | --- |
-| PlayerPrefab | 必填 | 玩家 Entity 的 Unity 表现对象 |
-| TestEnemyPrefab | 必填 | 第三部分测试敌人 |
-| SpawnTestEnemy | true | 是否在初始化时生成测试敌人 |
-| TestEnemyCount | 1 | 不能超过有效出生点数量 |
-| TestEnemyAttackRange | 5 | 传给 `AIComponent` |
+## 7. Gameplay 内容配置
 
-Asset 建议创建在：
+`GameplayContentConfig` 位于：
 
 ```text
 Assets/Res/Config/GameplayContentConfig.asset
 ```
 
-`GameEntry` 作为 Composition Root 持有该配置引用，再传给 GameAppFlow 和 Session。Gameplay 场景 ID 由 `GameplayState` 自己声明，不再通过 `GameAppConfig` 配置。
+当前字段：
 
-## 9. Session 初始化调整
+| 分组 | 字段 | 当前用途 |
+| --- | --- | --- |
+| 实体预制体 | `PlayerPrefab` | 生成玩家 Unity 对象 |
+| 实体预制体 | `TestEnemyPrefab` | 生成测试敌人 Unity 对象 |
+| 测试敌人 | `SpawnTestEnemy` | 是否生成测试敌人 |
+| 测试敌人 | `TestEnemyCount` | 生成数量，最多不超过出生点数量 |
+| 测试敌人 | `TestEnemyAttackRange` | 初始化 `AIComponent` 攻击距离 |
+| 物理查询 | `PlayerTargetMask` | 玩家攻击目标层 |
+| 物理查询 | `EnemyTargetMask` | 敌人攻击目标层 |
+| 物理查询 | `GrazeProjectileMask` | 擦弹可检测弹丸层 |
+| 物理查询 | `WallMask` | 墙体物理查询层 |
 
-### 9.1 新增依赖
+`GameEntry` 作为 Composition Root 持有该 Asset，并传入 `GameAppFlow`。
 
-Session 需要得到：
+Gameplay 场景名不再属于配置：
 
-```text
-IGameTimeService
-GameplayContentConfig
-GameplaySceneContext
-GameplayInputAdapter
-```
+- `GameplayState` 自己声明 `SceneId("GamePlay")` 并负责加载。
+- `AppFlowContext` 只记录本次实际加载的场景 ID，供失败回滚和退出时卸载。
+- `GameAppConfig` 不承担 UI 页面和 Gameplay 场景配置。
 
-建议初始化入口调整为：
+## 8. Prefab 与 Layer
 
-```csharp
-Task InitializeAsync(
-    GameplaySceneContext sceneContext,
-    GameplayContentConfig contentConfig,
-    GameplayInputAdapter input)
-```
-
-也可以由构造函数接收稳定依赖、`InitializeAsync` 接收场景 Context。最终保持一种方式即可，不同时保留多个模糊入口。
-
-### 9.2 新初始化顺序
+当前灰盒 Prefab：
 
 ```text
-创建 FactHub
-  → 创建 World
-  → 创建 Spawner
-  → 创建 Run
-  → SpawnPlayer
-  → 保存 PlayerEntityId
-  → 绑定 GameplayInputAdapter
-  → SpawnTestEnemy(PlayerEntityId)
-  → Run.Start
+Assets/Res/Gameplay/Player/Player.prefab
+Assets/Res/Gameplay/Enemy/TestEnemy.prefab
 ```
 
-`Run.Start()` 放在实体和输入成功创建之后，避免初始化失败时已经开始倒计时。
-
-### 9.3 Session 新增状态
-
-```csharp
-EntityId PlayerEntityId { get; }
-GameplaySceneContext SceneContext { get; }
-```
-
-Session 不长期保存 `CharacterEntity Player`。需要玩家对象时，通过：
-
-```csharp
-World.TryGetEntity(PlayerEntityId, out var player)
-```
-
-### 9.4 释放顺序
+两者只包含必要 Unity 组件：
 
 ```text
-解除输入绑定
-  → Dispose GameplayRun
-  → Dispose EntitySpawner
-  → Dispose GameplayWorld
-  → Dispose GameplayFactHub
-  → 清空 SceneContext 和 PlayerEntityId
+Transform
+SpriteRenderer
+Rigidbody2D
+CircleCollider2D
 ```
 
-输入必须最先解除，避免 Entity 已释放后仍收到 Input Action 回调。
+角色的 Attribute、Input/AI、Controller、Movement、WeaponUse、Equipment 和 Graze 能力由 `EntitySpawner` 在纯 C# `CharacterEntity` 上装配。
 
-## 10. Input Action 方案
-
-正式 Map 名称：`Gameplay`。
-
-| Action | 类型 | 默认输入 | 写入目标 |
-| --- | --- | --- | --- |
-| `Aim` | Value/Vector2 | Pointer Position | `SetAimDirection` |
-| `Fire` | Button | 鼠标左键 | `SetFire` |
-| `Graze` | Button | 鼠标右键 | `PressGraze` |
-| `Reload` | Button | R | `PressReload` |
-| `SwitchWeaponStep` | Value/Axis | 鼠标滚轮 | `StepWeapon` |
-| `WeaponSlot1` | Button | 1 | `SelectWeaponSlot(1)` |
-| `WeaponSlot2` | Button | 2 | `SelectWeaponSlot(2)` |
-| `WeaponSlot3` | Button | 3 | `SelectWeaponSlot(3)` |
-| `QuickSwap` | Button | Q | `PressQuickSwap` |
-| `Pause` | Button | Escape | AppFlow Pause/Resume |
-
-当前版本不保留玩家 `Move` Action。AI 的 `MoveDirection` 仍由 `AIComponent` 产生。
-
-## 11. GameplayInputAdapter
-
-`GameplayInputAdapter` 是普通 C# 类，负责 Input System 与 Gameplay 意图之间的唯一适配。
-
-建议职责：
-
-- 初始化时缓存 `Gameplay` Map 及所有必需 Action。
-- Bind 时接收当前玩家的 `PlayerInputComponent`、Transform 和 Gameplay Camera。
-- 注册按钮 Action 的 performed/canceled 回调。
-- 每帧读取 Pointer Position，转换为世界坐标和瞄准方向。
-- 提供一次性的 Pause 请求。
-- Unbind/Dispose 时完整解除回调。
-
-```mermaid
-flowchart LR
-    ACTION[InputAction]
-    ADAPTER[GameplayInputAdapter]
-    PLAYER_INPUT[PlayerInputComponent]
-    INTENT[PawnIntent]
-    CONTROLLER[CharacterController]
-
-    ACTION --> ADAPTER --> PLAYER_INPUT --> INTENT --> CONTROLLER
-```
-
-输入适配器不负责：
-
-- 直接移动 Transform。
-- 直接调用 WeaponUse 或 Graze。
-- 切换 AppFlow 状态以外的业务行为。
-- 保存玩家生命、弹药或装备状态。
-
-### 11.1 瞄准转换
-
-键鼠首版流程：
+第三阶段建立的 Layer：
 
 ```text
-Aim Action 读取屏幕坐标
-  → GameplayCamera.ScreenToWorldPoint
-  → 世界点 - 玩家世界坐标
-  → Vector2.normalized
-  → PlayerInputComponent.SetAimDirection
+Player
+Enemy
+PlayerProjectile
+EnemyProjectile
+Wall
+Pickup
 ```
 
-如果鼠标正好位于玩家中心，保留上一帧有效瞄准方向，避免产生零向量导致武器方向跳变。
+这些 Layer 是后续目标筛选、弹丸命中、擦弹和墙体查询的统一基础。
 
-手柄右摇杆与辅助瞄准不在本阶段实现，但 Action 层保留后续扩展空间。
+## 9. 场景实体注册与所有权
 
-### 11.2 Fire 状态
-
-- `performed` 调用 `SetFire(true)`。
-- `canceled` 调用 `SetFire(false)`。
-- `PlayerInputComponent` 自己生成 Pressed、Held、Released 三种状态。
-
-Graze、Reload、槽位和 QuickSwap 只在 performed 时产生单帧意图。
-
-## 12. InputModeService 与装配调整
-
-`InputModeService` 已持有运行时克隆的 `InputActionAsset`，但 `IInputModeService` 不暴露 Input System 类型。Foundation Core 不应为 Gameplay 输入细节增加依赖。
-
-建议装配方式：
-
-1. `GameEntry` 创建 `InputModeService`。
-2. `_appServices.InitializeAsync()` 完成后，`InputModeService.Actions` 已可用。
-3. `GameEntry` 使用运行时 Actions 创建 `GameplayInputAdapter`。
-4. 再创建 `GameAppFlow` 并传入 Gameplay 输入适配器。
-5. `GameplayState` 加载场景后解析 SceneContext，并创建 Session。
-
-因此 `GameEntry.Start` 的高层顺序调整为：
+墙体等预摆放对象通过 `SceneEntityAuthoring` 声明：
 
 ```text
-ComposeServices
-  → InitializeServicesAsync
-  → ComposeGameFlow
-  → GameAppFlow.StartAsync
+EntityCategory.Wall
+EntityTeam.Neutral
 ```
 
-不修改 `IInputModeService`，也不让 GameFlow 直接依赖具体的 `InputModeService`。
+Session 初始化时依次调用 `EntitySpawner.RegisterSceneEntity`，为其分配唯一 `EntityId` 并注册到 World 和 Collider 映射。
 
-## 13. Pause 输入边界
+`EntityUnityObject` 区分 Unity 对象所有权：
 
-Pause 是应用流程意图，不属于角色 `PawnIntent`，因此不把 `PausePressed` 加进 `PawnIntent`。
+- 运行时通过 Prefab 生成的对象：Entity 释放时销毁 GameObject。
+- 场景预摆放对象：Entity 释放时不销毁 GameObject，由场景卸载统一回收。
 
-建议：
+因此 Session 清理不会误删仍由 Unity 场景管理的对象，也不会遗留动态生成物。
 
-- `GameplayInputAdapter` 保存一次性 `PauseRequested` 标记。
-- `GameAppFlow.Tick` 在 Session Tick 前后消费该标记。
-- Gameplay 状态收到请求后切换到 `AppState.Pause`。
-- Pause 状态收到同一 Action 时恢复到 `AppState.Gameplay`。
-- 状态切换期间忽略重复 Pause 请求。
+## 10. Session 初始化与释放
 
-如果 Pause 页面暂未配置，可以先验证时间和 Action Map 切换，再接页面表现。
-
-## 14. GameplayState 流程调整
-
-首次进入 Gameplay：
+### 10.1 初始化顺序
 
 ```mermaid
 sequenceDiagram
     participant State as GameplayState
+    participant Session as GameplaySession
+    participant World as GameplayWorld
+    participant Spawner as EntitySpawner
+    participant Input as GameplayInputAdapter
+    participant Run as GameplayRun
+
+    State->>Session: InitializeAsync(sceneContext, contentConfig, input)
+    Session->>Session: 校验 Context 与 Config
+    Session->>World: 创建 FactHub、World、Spawner、Run
+    Session->>Spawner: 注册预摆放场景实体
+    Session->>Spawner: SpawnPlayer
+    Spawner-->>Session: CharacterEntity / PlayerEntityId
+    Session->>Input: Bind(PlayerInputComponent, Transform, Camera)
+    Session->>Spawner: SpawnEnemy(PlayerEntityId)
+    Session->>Run: Start
+```
+
+`Run.Start()` 放在场景实体、玩家、输入和测试敌人全部成功创建之后。初始化任一步异常都会进入统一回收逻辑。
+
+Session 对外保存：
+
+- `Facts`
+- `World`
+- `Spawner`
+- `Run`
+- `SceneContext`
+- `PlayerEntityId`
+
+需要玩家时通过 `World.TryGetEntity(PlayerEntityId, ...)` 查找，不额外长期持有玩家实体字段。
+
+### 10.2 释放顺序
+
+```text
+GameplayInputAdapter.Unbind
+  → GameplayRun.Dispose
+  → EntitySpawner.Dispose
+  → GameplayWorld.Dispose
+  → GameplayFactHub.Dispose
+  → 清空 SceneContext 和 PlayerEntityId
+```
+
+应用级 `GameplayInputAdapter` 可以跨 Session 复用，但每局玩家绑定必须随 Session 解除。
+
+## 11. Input Action 方案
+
+正式 Action Map：
+
+```text
+Gameplay
+UI
+```
+
+Gameplay Map：
+
+| Action | 类型 | 默认输入 | 生成的意图 |
+| --- | --- | --- | --- |
+| `Aim` | Value / Vector2 | Pointer Position | `SetAimDirection` |
+| `Fire` | Button | 鼠标左键 | `SetFire`，形成 Pressed/Held/Released |
+| `Graze` | Button | 鼠标右键 | `PressGraze` |
+| `Reload` | Button | R | `PressReload` |
+| `SwitchWeaponStep` | Value / Axis | 鼠标滚轮 | `StepWeapon` |
+| `WeaponSlot1` | Button | 1 | `SelectWeaponSlot(1)` |
+| `WeaponSlot2` | Button | 2 | `SelectWeaponSlot(2)` |
+| `WeaponSlot3` | Button | 3 | `SelectWeaponSlot(3)` |
+| `QuickSwap` | Button | Q | `PressQuickSwap` |
+| `Pause` | Button | Escape | 请求进入 Pause |
+
+UI Map 的 `Cancel` 同样可用于从 Pause 恢复。
+
+玩家没有 WASD Move Action。玩家的位移来源将在第四阶段接入射击后坐力；AI 的 `MoveDirection` 仍由 `AIComponent` 产生。
+
+## 12. GameplayInputAdapter 的实际行为
+
+`GameplayInputAdapter` 是 Input System 到 `PlayerInputComponent` 的唯一适配入口。
+
+```mermaid
+flowchart LR
+    ACTION[InputActionAsset]
+    ADAPTER[GameplayInputAdapter.Tick]
+    PLAYER_INPUT[PlayerInputComponent]
+    INTENT[PawnIntent]
+    CONTROL[CharacterController]
+
+    ACTION --> ADAPTER --> PLAYER_INPUT --> INTENT --> CONTROL
+```
+
+实现方式是由 `GameEntry.Update` 间接调用 Adapter 的 `Tick`，在每帧轮询 Action 状态；没有为每局重复注册 InputAction 回调。
+
+每帧行为：
+
+1. 检查 Gameplay Pause 或 UI Cancel 是否在本帧按下。
+2. 当 Gameplay Map 启用且玩家已经绑定时，更新瞄准方向。
+3. 使用 `Fire.IsPressed()` 写入持续开火状态。
+4. 使用 `WasPressedThisFrame()` 写入擦弹、换弹、槽位和快速切枪的单帧请求。
+5. 读取滚轮 Axis，转换为 `+1/-1` 切枪步进。
+
+瞄准转换：
+
+```text
+Pointer 屏幕坐标
+  → GameplayCamera.ScreenToWorldPoint
+  → 世界点 - 玩家世界坐标
+  → 归一化方向
+  → PlayerInputComponent.SetAimDirection
+```
+
+鼠标位于玩家中心导致方向接近零时，保留上一帧有效方向。
+
+`Unbind()` 会先写入 `SetFire(false)`，避免离开本局后保留按住开火状态，再清空玩家、Transform、Camera 和 Pause 标记。
+
+## 13. GameEntry 与更新驱动
+
+`GameEntry.Start` 的装配顺序：
+
+```text
+ComposeServices
+  → AppServiceGroup.InitializeAsync
+  → 使用 InputModeService.Actions 创建 GameplayInputAdapter
+  → 创建 GameAppFlow
+  → GameAppFlow.StartAsync
+```
+
+运行时驱动：
+
+```text
+GameEntry.Update
+  → GameTimeService.Tick
+  → TimerScheduler.Tick
+  → GameAppFlow.Tick
+      → GameplayInputAdapter.Tick
+      → 消费 Pause 请求
+      → Flow 状态 Tick
+      → GameplaySession.Tick
+
+GameEntry.FixedUpdate
+  → GameAppFlow.FixedTick
+      → GameplaySession.FixedTick
+          → GameplayWorld.FixedTick
+```
+
+`ShotGame.Gameplay.asmdef` 已引用 `Unity.InputSystem`；Foundation Core 不依赖 Input System 类型。
+
+## 14. GameplayState 与 Pause 流程
+
+### 14.1 首次进入 Gameplay
+
+```mermaid
+sequenceDiagram
+    participant State as GameplayState
+    participant Input as InputModeService
     participant Scene as SceneService
     participant Resolver as GameplaySceneResolver
     participant Context as AppFlowContext
-    participant Session as GameplaySession
-    participant Input as InputModeService
+    participant UI as UIService
 
     State->>Input: SetMode(Disabled)
     State->>Scene: LoadAdditiveAsync(GamePlay)
+    State->>Context: SetLoadedGameplayScene(GamePlay)
     State->>Resolver: Resolve(GamePlay)
     Resolver-->>State: GameplaySceneContext
-    State->>Context: CreateSessionAsync(sceneContext)
-    Context->>Session: InitializeAsync(...)
-    Session-->>Context: 玩家与测试敌人已创建
+    State->>Context: CreateSessionAsync(context)
+    State->>UI: OpenAsync(Gameplay, Session)
     State->>Input: SetMode(Gameplay)
 ```
 
-失败回滚维持现有原则：
+### 14.2 暂停与恢复
+
+Pause 属于应用流程意图，不写入 `PawnIntent`。
 
 ```text
-停止输入
-  → 解除 Input 回调
-  → Dispose Session
-  → 卸载 Gameplay 场景
-  → 保持非 Gameplay 输入状态
+Escape / UI Cancel
+  → GameplayInputAdapter.PauseRequested
+  → GameAppFlow 消费请求
+  → Gameplay ↔ Pause
 ```
 
-Pause 恢复时不重新解析场景、不重新绑定玩家、不创建新 Session，只恢复 Gameplay Action Map 和时间。
+进入 Pause 后：
 
-## 15. Prefab 最低要求
+- Session 和 GamePlay 场景保留。
+- Gameplay Tick/FixedTick 停止。
+- 时间服务进入暂停。
+- Action Map 切换到 UI。
 
-### 15.1 Player Prefab
+恢复 Gameplay 时只恢复 InputMode 与时间，不重新解析场景、不重新绑定玩家、不创建新 Session。
+
+### 14.3 失败回滚与退出
+
+首次进入任何一步失败：
 
 ```text
-Player
-├── SpriteRenderer
-├── Rigidbody2D
-└── Collider2D
+InputMode.Disabled
+  → Session.Dispose（若已创建）
+  → 清空本局引用
+  → 卸载本次已经加载的 GamePlay 场景
+  → 异常继续上抛并记录
 ```
 
-建议 Rigidbody2D：
+正常返回主菜单也由 `AppFlowContext.StopGameplayAsync` 执行同一套局内清理原则。
 
-- Body Type：Dynamic。
-- Gravity Scale：0。
-- Freeze Rotation Z：开启。
-- Collision Detection：Continuous 或按测试结果决定。
+## 15. 自动搭建工具
 
-### 15.2 TestEnemy Prefab
+菜单入口：
 
 ```text
-TestEnemy
-├── SpriteRenderer
-├── Rigidbody2D
-└── Collider2D
+Unity → Shot Game → Setup Third Phase
 ```
 
-敌人暂时只需要显示追击和攻击状态切换，不要求本阶段产生弹幕。
+`ThirdPhaseSetup` 会创建或更新：
 
-Prefab 不挂 PlayerEntity、AIComponent 或 CharacterController Mono 脚本，这些能力由 `EntitySpawner` 在普通 C# Entity 上装配。
-
-## 16. 计划文件结构
-
-```text
-Gameplay/
-├── Config/
-│   └── GameplayContentConfig.cs
-├── Scene/
-│   ├── GameplaySceneBindings.cs
-│   ├── GameplaySceneContext.cs
-│   ├── GameplaySceneResolver.cs
-│   └── SceneEntityAuthoring.cs
-└── Intent/
-    └── GameplayInputAdapter.cs
-
-GameFlow/
-├── AppFlowContext.cs                 调整 Session 创建参数
-├── GameAppFlow.cs                    接收/消费 Pause 请求
-└── States/GameplayState.cs           场景解析后创建 Session
-
-Entry/
-└── GameEntry.cs                      调整服务与 Flow 装配顺序
-
-Res/Config/
-├── Input.inputactions                统一 Gameplay Actions
-└── GameplayContentConfig.asset
-
-Scenes/
-└── GamePlay.unity                    建立约定层级和出生点
-
-Editor/
-└── ThirdPhaseSetup.cs                一键生成配置、Prefab、UI、Layer 和场景引用
-```
-
-根据最终装配位置，可能需要给 `ShotGame.Gameplay.asmdef` 增加 `Unity.InputSystem` 引用。不要让 `GameFoundation.Core` 引用 Input System。
-
-## 17. 施工顺序
-
-### 阶段 A：修正输入配置
-
-- 将 `Battle` Map 重命名为 `Gameplay`。
-- 将 `GameFoundationConfig.asset` 的 Gameplay Map 改为 `Gameplay`。
-- 按正式名称整理全部 Action 和默认绑定。
-- 删除玩家 Move Action。
-- 验证 UI 与 Gameplay Map 可以正常切换。
-
-验收：开始游戏不再因找不到 Action Map 抛异常。
-
-### 阶段 B：场景引用解析
-
-- 建立 GamePlay 灰盒场景层级。
-- 实现 `GameplaySceneContext`。
-- 实现 `GameplaySceneResolver`。
-- 为缺失、重复或类型错误节点提供明确异常。
-
-验收：场景加载后能一次性得到完整、有效的 Context。
-
-### 阶段 C：内容配置与实体生成
-
-- 创建 `GameplayContentConfig`。
-- 创建 Player/TestEnemy 灰盒 Prefab。
-- GameEntry 持有并验证配置。
-- Session 初始化时生成玩家。
-- 保存 `PlayerEntityId`。
-- 测试敌人使用玩家 ID 作为 AI 目标。
-
-验收：进入场景后玩家和敌人正确生成，敌人可以追击玩家。
-
-### 阶段 D：输入适配
-
-- 实现 `GameplayInputAdapter`。
-- 绑定玩家 InputComponent、Transform 和 GameplayCamera。
-- 接入 Aim、Fire、Graze、Reload、Switch 和 QuickSwap。
-- 明确 Bind、Unbind 和 Dispose。
-
-验收：所有输入都能生成正确的 `PawnIntent`，没有 Gameplay 类直接读取固定按键。
-
-### 阶段 E：暂停与生命周期
-
-- 接入 Pause Action。
-- 验证 Gameplay/Pause Action Map 切换。
-- 验证返回菜单时先解除输入再销毁 Entity。
-- 验证连续开始两局没有重复回调、旧目标 ID 或残留 GameObject。
-
-验收：暂停、恢复、退出和重开均稳定。
-
-## 18. 验收清单
-
-- [x] `GamePlay` 场景存在唯一合法 `GameplayRoot`。
-- [x] PlayerSpawn、EnemySpawns、Camera、ArenaBounds 已配置，并有初始化校验。
-- [x] Gameplay 配置 Asset 正确引用玩家和测试敌人 Prefab。
-- [ ] 点击开始后只创建一个 GameplaySession。
-- [x] Session 代码保证每局只创建一个玩家并保存 `PlayerEntityId`。
-- [x] 测试敌人创建时接收当前局玩家 ID。
-- [ ] 敌人可以在 Chase 与 Attack 间切换。
-- [x] Action Map 名称统一为 Gameplay/UI。
-- [x] Gameplay 不包含玩家 WASD Move Action。
-- [x] 输入适配器将鼠标屏幕位置转换为稳定瞄准方向。
-- [x] Fire 通过 `PlayerInputComponent` 区分 Pressed、Held、Released。
-- [x] Graze、Reload、切枪和 QuickSwap 按单帧意图接入。
-- [ ] Pause 可以进入暂停并恢复同一 Session。
-- [x] 返回菜单销毁 Session 时先解除本局 Input 绑定。
-- [x] Session 释放时清空旧玩家引用和 EntityId。
-- [x] 初始化任一步失败都会回收 Session 并卸载场景。
-- [x] 运行时与 Editor 程序集编译 0 Error。
-- [ ] Unity Play Mode 实际运行时 Console 无异常。
-
-## 20. Unity 自动搭建入口
-
-首次编译后，如果不存在完成标记，编辑器会自动执行第三阶段搭建。也可以随时手动执行：
-
-```text
-Unity 菜单 → Shot Game → Setup Third Phase
-```
-
-该命令会创建或更新：
-
-- Player 与 TestEnemy 灰盒 Prefab。
+- Player 和 TestEnemy 灰盒 Prefab。
 - `GameplayContentConfig.asset` 及 LayerMask。
 - Gameplay HUD 与 Pause UI Prefab。
-- `GamePlay.unity` 的战场层级、出生点、相机、边界、墙体和 Bindings。
-- Entry 场景中的 GameEntry 配置与 UI 页面注册。
-- Gameplay/UI Action Map 名称、资源目录和 Build Settings。
+- `GamePlay.unity` 的层级、出生点、相机、边界、墙体和 Bindings。
+- Entry 场景中的 GameEntry 引用和 UI 页面注册。
+- Gameplay/UI Action Map。
+- 所需 Layer、资源目录和 Build Settings。
 
-完成标记仅用于防止每次脚本重载都覆盖场景；手动菜单命令不受标记限制。
+自动完成标记只用于避免每次脚本重载都覆盖场景；手动菜单命令仍可重复执行。工具添加 Build Settings 时会保留已有场景列表。
 
-## 19. 第三部分完成后的状态
+## 16. 主要文件定位
 
-第三部分结束时，游戏已经具备一个“可操控但尚未真正射击”的灰盒运行环境：
+```text
+Assets/Scripts/ShotGame/
+├── Entry/
+│   └── GameEntry.cs
+├── GameFlow/
+│   ├── AppFlowContext.cs
+│   ├── GameAppFlow.cs
+│   └── States/GameplayState.cs
+├── Gameplay/
+│   ├── Config/GameplayContentConfig.cs
+│   ├── Intent/GameplayInputAdapter.cs
+│   ├── Run/GameplaySession.cs
+│   ├── Scene/
+│   │   ├── GameplaySceneBindings.cs
+│   │   ├── GameplaySceneContext.cs
+│   │   ├── GameplaySceneResolver.cs
+│   │   └── SceneEntityAuthoring.cs
+│   └── World/EntitySpawner.cs
+└── Editor/
+    ├── ThirdPhaseSetup.cs
+    └── ThirdPhaseSetupMarker.cs
+
+Assets/Res/
+├── Config/GameplayContentConfig.asset
+└── Gameplay/
+    ├── Player/Player.prefab
+    └── Enemy/TestEnemy.prefab
+
+Assets/Scenes/GamePlay.unity
+```
+
+## 17. 验收结果
+
+### 17.1 已由资源或代码确认
+
+- [x] `GamePlay` 场景存在唯一合法 `GameplaySceneBindings`。
+- [x] PlayerSpawn、EnemySpawns、Camera、ArenaBounds 和场景实体已配置并校验。
+- [x] GameplayContentConfig 正确引用玩家和测试敌人 Prefab。
+- [x] Session 只允许初始化一次，并保存唯一 `PlayerEntityId`。
+- [x] 测试敌人创建时接收当前局玩家 ID。
+- [x] Action Map 名称统一为 Gameplay/UI。
+- [x] 玩家输入中不包含 WASD Move。
+- [x] Aim、Fire、Graze、Reload、切枪、QuickSwap 和 Pause 已接入。
+- [x] 返回菜单或失败回滚时先解除本局 Input 绑定。
+- [x] 场景预摆放实体与动态实体使用不同的 GameObject 所有权策略。
+- [x] Runtime 与 Editor 程序集编译 0 Error、0 Warning。
+
+### 17.2 仍需 Play Mode 人工体验
+
+- [ ] 点击开始后场景中只存在一个 GameplaySession、一个玩家。
+- [ ] 测试敌人能根据距离在 Chase 与 Attack 间切换。
+- [ ] 鼠标瞄准方向稳定，所有按键只产生一次正确意图。
+- [ ] Pause 可以暂停并恢复同一个 Session。
+- [ ] 返回菜单后再次开始，不残留旧 Entity、输入状态或 GameObject。
+- [ ] 实际运行时 Console 无异常。
+
+## 18. 第三阶段最终状态
+
+第三阶段完成后，项目已经具备“场景与输入可运行、战斗尚未结算”的灰盒基础：
 
 ```text
 主菜单
-  → 进入 Gameplay
-  → 创建玩家和测试敌人
-  → 玩家能够瞄准并发出各种角色意图
-  → AI 能追击并进入攻击状态
-  → 可以暂停、恢复、退出和重开
+  → GameplayState 加载 GamePlay
+  → 解析场景引用
+  → 创建 Session / World
+  → 注册墙体
+  → 生成玩家与测试敌人
+  → 玩家输入和 AI 都生成 PawnIntent
+  → CharacterController 把意图交给能力组件
+  → 可暂停、恢复、退出和重开
 ```
 
-第四部分将在这条链路上实现真正的武器运行时、开火、ShotPackage、弹丸/射线命中以及后坐力，形成第一个可操作的射击闭环。
+第四阶段在此基础上实现武器运行时、射击、弹丸命中、伤害、换弹、切枪和后坐力，形成第一条真正可玩的战斗闭环。

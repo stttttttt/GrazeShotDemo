@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using ShotGame.Gameplay.Weapon;
 using UnityEngine;
 
 namespace ShotGame.Gameplay.Config
@@ -15,6 +17,14 @@ namespace ShotGame.Gameplay.Config
         [Min(0)] [SerializeField] private int _testEnemyCount = 1;
         [Min(0.1f)] [SerializeField] private float _testEnemyAttackRange = 5f;
 
+        [Header("第四阶段武器")]
+        [SerializeField] private WeaponConfig[] _playerInitialWeapons = Array.Empty<WeaponConfig>();
+        [SerializeField] private WeaponConfig _testEnemyWeapon;
+
+        [Header("玩家后坐移动")]
+        [Min(0.01f)] [SerializeField] private float _playerMaxRecoilSpeed = 12f;
+        [Min(0.01f)] [SerializeField] private float _playerRecoilRecovery = 8f;
+
         [Header("Gameplay 物理查询")]
         [SerializeField] private LayerMask _playerTargetMask;
         [SerializeField] private LayerMask _enemyTargetMask;
@@ -26,6 +36,10 @@ namespace ShotGame.Gameplay.Config
         public bool SpawnTestEnemy => _spawnTestEnemy;
         public int TestEnemyCount => _testEnemyCount;
         public float TestEnemyAttackRange => _testEnemyAttackRange;
+        public IReadOnlyList<WeaponConfig> PlayerInitialWeapons => _playerInitialWeapons;
+        public WeaponConfig TestEnemyWeapon => _testEnemyWeapon;
+        public float PlayerMaxRecoilSpeed => _playerMaxRecoilSpeed;
+        public float PlayerRecoilRecovery => _playerRecoilRecovery;
         public LayerMask PlayerTargetMask => _playerTargetMask;
         public LayerMask EnemyTargetMask => _enemyTargetMask;
         public LayerMask GrazeProjectileMask => _grazeProjectileMask;
@@ -36,6 +50,23 @@ namespace ShotGame.Gameplay.Config
             if (_playerPrefab == null) throw new InvalidOperationException("GameplayContentConfig 缺少 PlayerPrefab。");
             if (_spawnTestEnemy && _testEnemyCount > 0 && _testEnemyPrefab == null)
                 throw new InvalidOperationException("GameplayContentConfig 开启了测试敌人，但缺少 TestEnemyPrefab。");
+            if (_playerInitialWeapons == null || _playerInitialWeapons.Length < 1 || _playerInitialWeapons.Length > 3)
+                throw new InvalidOperationException("GameplayContentConfig 需要配置 1 至 3 把玩家初始武器。");
+            var weapons = new HashSet<WeaponConfig>();
+            for (var i = 0; i < _playerInitialWeapons.Length; i++)
+            {
+                var weapon = _playerInitialWeapons[i];
+                if (weapon == null) throw new InvalidOperationException($"玩家初始武器槽 {i + 1} 为空。");
+                if (!weapons.Add(weapon)) throw new InvalidOperationException($"玩家初始武器重复：{weapon.name}。");
+                weapon.Validate();
+            }
+            if (_spawnTestEnemy && _testEnemyCount > 0)
+            {
+                if (_testEnemyWeapon == null) throw new InvalidOperationException("测试敌人缺少武器配置。");
+                _testEnemyWeapon.Validate();
+            }
+            if (_playerMaxRecoilSpeed <= 0f || _playerRecoilRecovery <= 0f)
+                throw new InvalidOperationException("玩家后坐最大速度和恢复速度必须大于 0。");
         }
     }
 }
