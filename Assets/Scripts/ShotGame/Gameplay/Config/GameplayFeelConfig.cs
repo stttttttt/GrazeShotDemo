@@ -13,7 +13,6 @@ namespace ShotGame.Gameplay.Config
         {
             [SerializeField] private WeaponConfig _weapon;
             [SerializeField] private AudioClip _fireAudio;
-            [SerializeField] private Color _muzzleColor = new Color(1f, 0.82f, 0.25f, 1f);
             [Min(0.01f)] [SerializeField] private float _muzzleSize = 0.55f;
             [Min(0f)] [SerializeField] private float _cameraKick = 0.08f;
             [Min(0f)] [SerializeField] private float _shakeStrength = 0.05f;
@@ -23,7 +22,6 @@ namespace ShotGame.Gameplay.Config
 
             public WeaponConfig Weapon => _weapon;
             public AudioClip FireAudio => _fireAudio;
-            public Color MuzzleColor => _muzzleColor;
             public float MuzzleSize => _muzzleSize;
             public float CameraKick => _cameraKick;
             public float ShakeStrength => _shakeStrength;
@@ -35,6 +33,23 @@ namespace ShotGame.Gameplay.Config
         [Header("武器反馈")]
         [SerializeField] private WeaponFeedbackEntry[] _weaponFeedback = Array.Empty<WeaponFeedbackEntry>();
 
+        [Header("枪口焰序列帧与弹壳")]
+        [SerializeField] private Sprite[] _muzzleFrames = Array.Empty<Sprite>();
+        [Min(0.01f)] [SerializeField] private float _muzzleFrameDuration = 0.035f;
+        [SerializeField] private Color _shellColor = new Color(0.9f, 0.62f, 0.18f, 1f);
+        [SerializeField] private Vector2 _shellSize = new Vector2(0.26f, 0.09f);
+        [SerializeField] private Vector2 _shellEjectSpeedRange = new Vector2(1.5f, 2.8f);
+        [Min(0f)] [SerializeField] private float _shellGravity = 4f;
+        [Min(0.01f)] [SerializeField] private float _shellLifetime = 0.7f;
+
+        [Header("命中表现")]
+        [SerializeField] private Sprite[] _hitEffectFrames = Array.Empty<Sprite>();
+        [Min(0.01f)] [SerializeField] private float _hitEffectFrameDuration = 0.055f;
+        [Min(0.01f)] [SerializeField] private float _hitEffectSize = 0.42f;
+        [Min(0.01f)] [SerializeField] private float _lethalHitEffectSize = 0.72f;
+        [Min(0f)] [SerializeField] private float _enemyHitShakeDistance = 0.1f;
+        [Min(0.01f)] [SerializeField] private float _enemyHitShakeDuration = 0.12f;
+
         [Header("命中与角色")]
         [SerializeField] private GameObject _worldEffectPrefab;
         [SerializeField] private Color _hitFlashColor = Color.white;
@@ -42,6 +57,7 @@ namespace ShotGame.Gameplay.Config
         [SerializeField] private Color _enemyDamageNumberColor = new Color(1f, 0.88f, 0.3f, 1f);
         [SerializeField] private Color _empoweredDamageNumberColor = new Color(0.3f, 1f, 1f, 1f);
         [SerializeField] private Color _lethalDamageNumberColor = new Color(1f, 0.35f, 0.2f, 1f);
+        [SerializeField] private Color _healingNumberColor = new Color(0.35f, 1f, 0.45f, 1f);
         [Min(0.01f)] [SerializeField] private float _flashDuration = 0.055f;
         [Min(0.01f)] [SerializeField] private float _damageNumberDuration = 0.6f;
         [Min(1)] [SerializeField] private int _damageNumberLimit = 24;
@@ -60,6 +76,16 @@ namespace ShotGame.Gameplay.Config
         [Min(0.01f)] [SerializeField] private float _healthImmediateDuration = 0.08f;
         [Min(0f)] [SerializeField] private float _healthDamageHold = 0.22f;
         [Min(0.01f)] [SerializeField] private float _healthDelayedDuration = 0.32f;
+        [Min(0.01f)] [SerializeField] private float _healthBarHitDuration = 0.16f;
+        [Min(0f)] [SerializeField] private float _healthBarHitShakeDistance = 5f;
+        [Min(0f)] [SerializeField] private float _healthBarHitPulseScale = 0.12f;
+
+        [Header("敌人死亡溶解")]
+        [SerializeField] private Material _enemyDissolveMaterial;
+        [Min(0.01f)] [SerializeField] private float _enemyDissolveDuration = 0.72f;
+        [SerializeField] private Color _enemyDissolveEdgeColor = new Color(1f, 0.35f, 0.05f, 1f);
+        [Range(0.001f, 0.3f)] [SerializeField] private float _enemyDissolveEdgeWidth = 0.08f;
+        [Min(1)] [SerializeField] private int _enemyDissolvePoolLimit = 12;
 
         [Header("擦弹窗口表现")]
         [SerializeField] private Material _grazeRingMaterial;
@@ -95,12 +121,26 @@ namespace ShotGame.Gameplay.Config
         [SerializeField] private AudioClip _perfectReadyAudio;
 
         public IReadOnlyList<WeaponFeedbackEntry> WeaponFeedback => _weaponFeedback;
+        public IReadOnlyList<Sprite> MuzzleFrames => _muzzleFrames;
+        public float MuzzleFrameDuration => _muzzleFrameDuration;
+        public Color ShellColor => _shellColor;
+        public Vector2 ShellSize => _shellSize;
+        public Vector2 ShellEjectSpeedRange => _shellEjectSpeedRange;
+        public float ShellGravity => _shellGravity;
+        public float ShellLifetime => _shellLifetime;
+        public IReadOnlyList<Sprite> HitEffectFrames => _hitEffectFrames;
+        public float HitEffectFrameDuration => _hitEffectFrameDuration;
+        public float HitEffectSize => _hitEffectSize;
+        public float LethalHitEffectSize => _lethalHitEffectSize;
+        public float EnemyHitShakeDistance => _enemyHitShakeDistance;
+        public float EnemyHitShakeDuration => _enemyHitShakeDuration;
         public Color HitFlashColor => _hitFlashColor;
         public GameObject WorldEffectPrefab => _worldEffectPrefab;
         public Color PlayerDamageColor => _playerDamageColor;
         public Color EnemyDamageNumberColor => _enemyDamageNumberColor;
         public Color EmpoweredDamageNumberColor => _empoweredDamageNumberColor;
         public Color LethalDamageNumberColor => _lethalDamageNumberColor;
+        public Color HealingNumberColor => _healingNumberColor;
         public float FlashDuration => _flashDuration;
         public float DamageNumberDuration => _damageNumberDuration;
         public int DamageNumberLimit => _damageNumberLimit;
@@ -115,6 +155,14 @@ namespace ShotGame.Gameplay.Config
         public float HealthImmediateDuration => _healthImmediateDuration;
         public float HealthDamageHold => _healthDamageHold;
         public float HealthDelayedDuration => _healthDelayedDuration;
+        public float HealthBarHitDuration => _healthBarHitDuration;
+        public float HealthBarHitShakeDistance => _healthBarHitShakeDistance;
+        public float HealthBarHitPulseScale => _healthBarHitPulseScale;
+        public Material EnemyDissolveMaterial => _enemyDissolveMaterial;
+        public float EnemyDissolveDuration => _enemyDissolveDuration;
+        public Color EnemyDissolveEdgeColor => _enemyDissolveEdgeColor;
+        public float EnemyDissolveEdgeWidth => _enemyDissolveEdgeWidth;
+        public int EnemyDissolvePoolLimit => _enemyDissolvePoolLimit;
         public Material GrazeRingMaterial => _grazeRingMaterial;
         public Color GrazeStartupColor => _grazeStartupColor;
         public Color GrazePerfectColor => _grazePerfectColor;
@@ -153,10 +201,23 @@ namespace ShotGame.Gameplay.Config
 
         public void Validate()
         {
+            if (_muzzleFrames == null || _muzzleFrames.Length == 0 || _muzzleFrameDuration <= 0f ||
+                _shellSize.x <= 0f || _shellSize.y <= 0f || _shellLifetime <= 0f ||
+                _shellEjectSpeedRange.x < 0f || _shellEjectSpeedRange.y < _shellEjectSpeedRange.x)
+                throw new InvalidOperationException("GameplayFeelConfig 的枪口焰或弹壳配置无效。");
+            if (_hitEffectFrames == null || _hitEffectFrames.Length == 0 ||
+                _hitEffectFrameDuration <= 0f || _hitEffectSize <= 0f || _lethalHitEffectSize <= 0f ||
+                _enemyHitShakeDistance < 0f || _enemyHitShakeDuration <= 0f)
+                throw new InvalidOperationException("GameplayFeelConfig 的命中表现配置无效。");
             if (_damageNumberLimit <= 0 || _worldHealthBarLimit <= 0)
                 throw new InvalidOperationException("GameplayFeelConfig 的 UI 对象上限必须大于 0。");
-            if (_healthImmediateDuration <= 0f || _healthDelayedDuration <= 0f || _cameraRecovery <= 0f)
+            if (_healthImmediateDuration <= 0f || _healthDelayedDuration <= 0f ||
+                _healthBarHitDuration <= 0f || _healthBarHitShakeDistance < 0f ||
+                _healthBarHitPulseScale < 0f || _cameraRecovery <= 0f)
                 throw new InvalidOperationException("GameplayFeelConfig 包含非法动画时长。");
+            if (_enemyDissolveMaterial == null || _enemyDissolveDuration <= 0f ||
+                _enemyDissolveEdgeWidth <= 0f || _enemyDissolvePoolLimit <= 0)
+                throw new InvalidOperationException("GameplayFeelConfig 的敌人死亡溶解配置无效。");
             if (_grazeStartupScale < 1f || _grazeStartupVisualDuration <= 0f ||
                 _grazeRingThickness <= 0f || _grazeRingSoftness <= 0f ||
                 _grazePerfectPulseScale < 1f || _grazePerfectPulseDuration <= 0f)

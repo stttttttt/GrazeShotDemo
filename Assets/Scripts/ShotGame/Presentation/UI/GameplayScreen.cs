@@ -27,10 +27,12 @@ namespace ShotGame.Presentation.UI
         [SerializeField] private RectTransform _worldUiRoot;
         [SerializeField] private DamageNumberView _damageNumberPrefab;
         [SerializeField] private WorldHealthBarView _worldHealthBarPrefab;
+        [SerializeField] private Text _controlsHelpText;
 
         private GameplaySession _session;
         private IDisposable _weaponSubscription;
         private IDisposable _damageSubscription;
+        private IDisposable _healingSubscription;
         private IDisposable _grazePhaseSubscription;
         private IDisposable _grazeSucceededSubscription;
         private IDisposable _chargeSubscription;
@@ -55,6 +57,7 @@ namespace ShotGame.Presentation.UI
                 ?? throw new ArgumentException("GameplayScreen 需要 GameplaySession。", nameof(args));
             EnsureFifthPhaseLabels();
             EnsureSixthPhaseLabels();
+            EnsureControlsHelp();
             if (_weaponText == null || _healthText == null || _grazeText == null ||
                 _chargeText == null || _timeText == null)
                 throw new InvalidOperationException("GameplayScreen 缺少 HUD 文本引用。");
@@ -62,10 +65,9 @@ namespace ShotGame.Presentation.UI
             RefreshAll();
             _weaponSubscription = _session.Facts.Subscribe<WeaponStateChangedFact>(OnWeaponStateChanged);
             _damageSubscription = _session.Facts.Subscribe<CharacterDamagedFact>(OnCharacterDamaged);
-            _grazePhaseSubscription = _session.Facts.Subscribe<GrazePhaseChangedFact>(OnGrazePhaseChanged);
-            _grazeSucceededSubscription = _session.Facts.Subscribe<GrazeSucceededFact>(OnGrazeSucceeded);
-            _chargeSubscription = _session.Facts.Subscribe<ChargeChangedFact>(OnChargeChanged);
-            _timeSubscription = _session.Facts.Subscribe<TimeDilationChangedFact>(OnTimeDilationChanged);
+            _healingSubscription = _session.Facts.Subscribe<CharacterHealedFact>(OnCharacterHealed);
+            _grazeSucceededSubscription = _session.Facts.Subscribe<GrazeShockwaveReleasedFact>(OnShockwaveReleased);
+            _chargeSubscription = _session.Facts.Subscribe<AmmoRewardedFact>(OnAmmoRewarded);
             _countdownSubscription = _session.Facts.Subscribe<RunCountdownChangedFact>(OnCountdownChanged);
             _waveStartedSubscription = _session.Facts.Subscribe<WaveStartedFact>(OnWaveStarted);
             _waveProgressSubscription = _session.Facts.Subscribe<WaveProgressChangedFact>(OnWaveProgressChanged);
@@ -79,6 +81,8 @@ namespace ShotGame.Presentation.UI
             _weaponSubscription = null;
             _damageSubscription?.Dispose();
             _damageSubscription = null;
+            _healingSubscription?.Dispose();
+            _healingSubscription = null;
             _grazePhaseSubscription?.Dispose();
             _grazePhaseSubscription = null;
             _grazeSucceededSubscription?.Dispose();
@@ -106,11 +110,10 @@ namespace ShotGame.Presentation.UI
             var attributes = player.GetComponent<AttributeComponent>();
             if (attributes != null) ShowHealth(attributes.GetCurrent(AttributeType.Health));
             var graze = player.GetComponent<GrazeComponent>();
-            _grazeText.text = $"擦弹  {graze?.Phase ?? GrazePhase.Idle}";
-            var charge = player.GetComponent<ChargeComponent>();
-            ShowCharge(charge?.ChargeLevel ?? 0, charge?.ComboCount ?? 0);
-            var timeDilation = _session.TimeDilation;
-            ShowTime(timeDilation?.CurrentScale ?? 1f, timeDilation != null && timeDilation.IsActive);
+            _grazeText.text = "冲击波  按住右键蓄力";
+            _chargeText.text = graze != null
+                ? $"范围  {graze.PreviewRadius:0.0}" : "范围  --";
+            _timeText.text = "冲击波消除敌弹可补充弹药并恢复生命";
             _waveText.text = $"开始倒计时  {Mathf.CeilToInt(_session.Run.CountdownRemaining)}";
             _objectiveText.text = _currentObjective;
         }
@@ -128,6 +131,12 @@ namespace ShotGame.Presentation.UI
             ShowHealth(fact.Result.HealthAfterDamage);
         }
 
+        private void OnCharacterHealed(CharacterHealedFact fact)
+        {
+            if (_session == null || fact.TargetId != _session.PlayerEntityId) return;
+            ShowHealth(fact.HealthAfterHealing);
+        }
+
         private void OnGrazePhaseChanged(GrazePhaseChangedFact fact)
         {
             if (_session == null || fact.PlayerId != _session.PlayerEntityId) return;
@@ -138,6 +147,20 @@ namespace ShotGame.Presentation.UI
         {
             if (_session == null || fact.PlayerId != _session.PlayerEntityId) return;
             _grazeText.text = $"擦弹  {GetResultName(fact.ResultType)}";
+        }
+
+        private void OnShockwaveReleased(GrazeShockwaveReleasedFact fact)
+        {
+            if (_session == null || fact.PlayerId != _session.PlayerEntityId) return;
+            _grazeText.text = fact.AbsorbedProjectiles > 0
+                ? $"冲击波  吸收 {fact.AbsorbedProjectiles} 发" : "冲击波  已释放";
+            _chargeText.text = $"弹药 +{fact.AmmoReward}  生命 +{Mathf.RoundToInt(fact.RestoredHealth)}";
+        }
+
+        private void OnAmmoRewarded(AmmoRewardedFact fact)
+        {
+            if (_session == null || fact.PlayerId != _session.PlayerEntityId) return;
+            _chargeText.text = $"吸收补给  +{fact.Amount}";
         }
 
         private void OnChargeChanged(ChargeChangedFact fact)
@@ -157,7 +180,9 @@ namespace ShotGame.Presentation.UI
 
         private void OnWaveStarted(WaveStartedFact fact)
         {
-            _waveText.text = $"波次 {fact.WaveIndex}/{fact.TotalWaves}  {fact.DisplayName}";
+            _waveText.text = fact.TotalWaves > 0
+                ? $"波次 {fact.WaveIndex}/{fact.TotalWaves}  {fact.DisplayName}"
+                : $"无限模式  第 {fact.WaveIndex} 波";
             _currentObjective = fact.ObjectiveType == WaveObjectiveType.KeyTarget
                 ? "目标：击败关键目标"
                 : "目标：消灭所有敌人";
@@ -202,15 +227,49 @@ namespace ShotGame.Presentation.UI
 
         private void EnsureFifthPhaseLabels()
         {
-            if (_grazeText == null) _grazeText = CreateRuntimeLabel("GrazeStatus", "擦弹  Idle", -120f);
-            if (_chargeText == null) _chargeText = CreateRuntimeLabel("ChargeStatus", "充能  Lv.0  连段 0", -155f);
-            if (_timeText == null) _timeText = CreateRuntimeLabel("TimeStatus", "子弹时间  ×1.00", -190f);
+            if (_grazeText == null) _grazeText = CreateRuntimeLabel("GrazeStatus", "冲击波  按住右键蓄力", -120f);
+            if (_chargeText == null) _chargeText = CreateRuntimeLabel("ChargeStatus", "范围  --", -155f);
+            if (_timeText == null) _timeText = CreateRuntimeLabel("TimeStatus", "消除敌弹可补充弹药并回血", -190f);
         }
 
         private void EnsureSixthPhaseLabels()
         {
             if (_waveText == null) _waveText = CreateRuntimeLabel("WaveStatus", "开始倒计时", -225f);
             if (_objectiveText == null) _objectiveText = CreateRuntimeLabel("WaveObjective", "等待第一波", -260f);
+        }
+
+        private void EnsureControlsHelp()
+        {
+            if (_controlsHelpText == null)
+            {
+                var existing = transform.Find("SeventhPhaseHud/ControlsHelp");
+                _controlsHelpText = existing != null ? existing.GetComponent<Text>() : null;
+            }
+            if (_controlsHelpText == null)
+            {
+                var helpObject = new GameObject("ControlsHelp", typeof(RectTransform),
+                    typeof(CanvasRenderer), typeof(Text));
+                helpObject.layer = gameObject.layer;
+                helpObject.transform.SetParent(transform, false);
+                _controlsHelpText = helpObject.GetComponent<Text>();
+                _controlsHelpText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                _controlsHelpText.fontSize = 16;
+                _controlsHelpText.alignment = TextAnchor.UpperRight;
+                _controlsHelpText.color = new Color(1f, 1f, 1f, 0.86f);
+                _controlsHelpText.raycastTarget = false;
+                var rect = _controlsHelpText.rectTransform;
+                rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+                rect.pivot = new Vector2(1f, 1f);
+                rect.anchoredPosition = new Vector2(-24f, -24f);
+                rect.sizeDelta = new Vector2(470f, 190f);
+            }
+            _controlsHelpText.text =
+                "操作说明\n" +
+                "WASD  移动     鼠标  瞄准\n" +
+                "左键  开火     右键按住  蓄力冲击波\n" +
+                "Space  冲刺（无无敌）     R  换弹\n" +
+                "1  冲锋枪     2  霰弹枪     3  狙击枪\n" +
+                "滚轮  切换武器     Q  上一把     Esc  暂停";
         }
 
         private Text CreateRuntimeLabel(string objectName, string content, float y)

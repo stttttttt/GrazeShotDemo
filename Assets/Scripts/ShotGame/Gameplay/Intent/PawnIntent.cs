@@ -19,11 +19,17 @@ namespace ShotGame.Gameplay.Intent
         /// <summary>本帧松开开火。</summary>
         public bool FireReleased;
 
-        /// <summary>本帧按下擦弹。</summary>
-        public bool GrazePressed;
+        /// <summary>持续按住冲击波蓄力。</summary>
+        public bool GrazeHeld;
+
+        /// <summary>本帧松开冲击波蓄力。</summary>
+        public bool GrazeReleased;
 
         /// <summary>本帧按下换弹。</summary>
         public bool ReloadPressed;
+
+        /// <summary>本帧请求向移动方向冲刺；没有移动输入时使用瞄准方向。</summary>
+        public bool DashPressed;
 
         /// <summary>本帧请求切换到的武器槽位，0 表示不切换。</summary>
         public int SwitchWeaponSlot;

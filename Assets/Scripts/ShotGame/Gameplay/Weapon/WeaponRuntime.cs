@@ -33,7 +33,11 @@ namespace ShotGame.Gameplay.Weapon
             if (State == WeaponState.Cooldown)
             {
                 CooldownRemaining = Mathf.Max(0f, CooldownRemaining - deltaTime);
-                if (CooldownRemaining <= 0f) State = WeaponState.Ready;
+                if (CooldownRemaining <= 0f)
+                {
+                    State = WeaponState.Ready;
+                    if (MagazineAmmo <= 0 && ReserveAmmo > 0) TryStartReload();
+                }
             }
             else if (State == WeaponState.Reloading)
             {
@@ -62,6 +66,15 @@ namespace ShotGame.Gameplay.Weapon
             return true;
         }
 
+        /// <summary>向武器备弹中加入奖励弹药，返回实际增加数量。</summary>
+        public int AddReserveAmmo(int amount)
+        {
+            if (amount <= 0) return 0;
+            var before = ReserveAmmo;
+            ReserveAmmo = Math.Min(999, ReserveAmmo + amount);
+            return ReserveAmmo - before;
+        }
+
         public bool TryCreateShotPackage(bool firePressed, bool fireHeld, GameEntityId sourceId,
             EntityTeam sourceTeam, Vector2 ownerPosition, Vector2 aimDirection, float damageMultiplier,
             LayerMask targetMask, LayerMask wallMask, out ShotPackage shotPackage)
@@ -85,7 +98,7 @@ namespace ShotGame.Gameplay.Weapon
                 Config.ProjectilePrefab, Config.ProjectileCount, Config.SpreadAngle,
                 Config.Damage * Mathf.Max(0f, damageMultiplier), Config.ProjectileSpeed,
                 Config.ProjectileLifetime, Config.ProjectileRadius, Config.RecoilImpulse,
-                targetMask, wallMask);
+                targetMask, wallMask, remainingPenetrations: Config.Penetrations);
             return true;
         }
 

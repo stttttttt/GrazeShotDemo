@@ -15,7 +15,6 @@ MonoBehaviour:
   _weaponFeedback:
   - _weapon: {fileID: 11400000, guid: 33c75b84a5114d4d9fd18aae068ca070, type: 2}
     _fireAudio: {fileID: 0}
-    _muzzleColor: {r: 1, g: 0.82, b: 0.25, a: 1}
     _muzzleSize: 0.72
     _cameraKick: 0.16
     _shakeStrength: 0.1
@@ -24,16 +23,22 @@ MonoBehaviour:
     _hitStopCooldown: 0.08
   - _weapon: {fileID: 11400000, guid: a29d88edae294176a46f208aee78d690, type: 2}
     _fireAudio: {fileID: 0}
-    _muzzleColor: {r: 1, g: 0.82, b: 0.25, a: 1}
     _muzzleSize: 0.42
     _cameraKick: 0.045
     _shakeStrength: 0.025
     _shakeDuration: 0.055
     _hitStopDuration: 0.006
     _hitStopCooldown: 0.07
+  - _weapon: {fileID: 11400000, guid: c82ea51f4b3d46908f127acd65e90312, type: 2}
+    _fireAudio: {fileID: 0}
+    _muzzleSize: 1.05
+    _cameraKick: 0.18
+    _shakeStrength: 0.18
+    _shakeDuration: 0.18
+    _hitStopDuration: 0.035
+    _hitStopCooldown: 0.2
   - _weapon: {fileID: 11400000, guid: 6cd671a32eb443d59a7a62186ff020b1, type: 2}
     _fireAudio: {fileID: 0}
-    _muzzleColor: {r: 1, g: 0.3, b: 0.22, a: 1}
     _muzzleSize: 0.35
     _cameraKick: 0
     _shakeStrength: 0
@@ -42,7 +47,6 @@ MonoBehaviour:
     _hitStopCooldown: 0.07
   - _weapon: {fileID: 11400000, guid: c6e0d1080f8848b48ba9a0719e28d4d4, type: 2}
     _fireAudio: {fileID: 0}
-    _muzzleColor: {r: 1, g: 0.3, b: 0.22, a: 1}
     _muzzleSize: 0.35
     _cameraKick: 0
     _shakeStrength: 0
@@ -51,19 +55,39 @@ MonoBehaviour:
     _hitStopCooldown: 0.07
   - _weapon: {fileID: 11400000, guid: 59f0b0e022caed64f9960b71e76fe69b, type: 2}
     _fireAudio: {fileID: 0}
-    _muzzleColor: {r: 1, g: 0.3, b: 0.22, a: 1}
     _muzzleSize: 0.35
     _cameraKick: 0
     _shakeStrength: 0
     _shakeDuration: 0.055
     _hitStopDuration: 0
     _hitStopCooldown: 0.07
+  _muzzleFrames:
+  - {fileID: -1078095070, guid: c49255e93cd32884dba875c0b775c171, type: 3}
+  - {fileID: -982768606, guid: c49255e93cd32884dba875c0b775c171, type: 3}
+  - {fileID: 1879013664, guid: c49255e93cd32884dba875c0b775c171, type: 3}
+  - {fileID: -1149038899, guid: c49255e93cd32884dba875c0b775c171, type: 3}
+  - {fileID: 717880536, guid: c49255e93cd32884dba875c0b775c171, type: 3}
+  _muzzleFrameDuration: 0.035
+  _shellColor: {r: 0.9, g: 0.62, b: 0.18, a: 1}
+  _shellSize: {x: 0.26, y: 0.09}
+  _shellEjectSpeedRange: {x: 1.5, y: 2.8}
+  _shellGravity: 4
+  _shellLifetime: 0.7
+  _hitEffectFrames:
+  - {fileID: 99473828, guid: c49255e93cd32884dba875c0b775c171, type: 3}
+  - {fileID: 274347490, guid: c49255e93cd32884dba875c0b775c171, type: 3}
+  _hitEffectFrameDuration: 0.055
+  _hitEffectSize: 0.42
+  _lethalHitEffectSize: 0.72
+  _enemyHitShakeDistance: 0.1
+  _enemyHitShakeDuration: 0.12
   _worldEffectPrefab: {fileID: 5797359987145329634, guid: 5ee91b7434d14924f9070835df2d1ba4, type: 3}
   _hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
   _playerDamageColor: {r: 1, g: 0.2, b: 0.2, a: 1}
   _enemyDamageNumberColor: {r: 1, g: 0.88, b: 0.3, a: 1}
   _empoweredDamageNumberColor: {r: 0.3, g: 1, b: 1, a: 1}
   _lethalDamageNumberColor: {r: 1, g: 0.35, b: 0.2, a: 1}
+  _healingNumberColor: {r: 0.35, g: 1, b: 0.45, a: 1}
   _flashDuration: 0.055
   _damageNumberDuration: 0.6
   _damageNumberLimit: 24
@@ -78,6 +102,14 @@ MonoBehaviour:
   _healthImmediateDuration: 0.08
   _healthDamageHold: 0.22
   _healthDelayedDuration: 0.32
+  _healthBarHitDuration: 0.16
+  _healthBarHitShakeDistance: 5
+  _healthBarHitPulseScale: 0.12
+  _enemyDissolveMaterial: {fileID: 2100000, guid: f5bb8c14be3d456093c889553627c631, type: 2}
+  _enemyDissolveDuration: 0.72
+  _enemyDissolveEdgeColor: {r: 1, g: 0.35, b: 0.05, a: 1}
+  _enemyDissolveEdgeWidth: 0.08
+  _enemyDissolvePoolLimit: 12
   _grazeRingMaterial: {fileID: 2100000, guid: d1b8f44890aecb24487cb0b6867a19c7, type: 2}
   _grazeStartupColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   _grazePerfectColor: {r: 0.35, g: 1, b: 0.72, a: 1}

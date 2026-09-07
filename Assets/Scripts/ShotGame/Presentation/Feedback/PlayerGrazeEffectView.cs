@@ -33,6 +33,32 @@ namespace ShotGame.Presentation.Feedback
         private GrazePhase _notifiedPhase = GrazePhase.Idle;
         private bool _initialized;
 
+        /// <summary>在玩家本体附近显示随蓄力增强的白色光环。</summary>
+        public void SetCharging(bool charging, float progress, float radius)
+        {
+            if (!_initialized || _mainRenderer == null) return;
+            if (!charging)
+            {
+                _mainRenderer.enabled = false;
+                return;
+            }
+            // 蓄力光收束在角色本体附近；真正的范围由 HUD 数字和释放冲击波表现。
+            _worldDiameter = Mathf.Lerp(0.65f, 1.15f, progress);
+            var breathe = 1f + Mathf.Sin(Time.unscaledTime * Mathf.Lerp(8f, 16f, progress)) * 0.035f;
+            SetMain(Color.white, Mathf.Lerp(0.35f, 0.95f, progress),
+                Mathf.Lerp(1.2f, 3f, progress), breathe,
+                Mathf.Lerp(0.65f, 1.05f, progress), 0f, 0.025f, Time.unscaledTime * 0.25f);
+        }
+
+        /// <summary>从角色中心快速扩散到本次判定半径。</summary>
+        public void PlayShockwave(float radius, float charge01)
+        {
+            if (!_initialized || _pulseRenderer == null) return;
+            _worldDiameter = Mathf.Max(0.01f, radius * 2f);
+            _pulseRemaining = _config.GrazePerfectPulseDuration;
+            _pulseRenderer.enabled = true;
+        }
+
         public static PlayerGrazeEffectView GetOrCreate(GameObject player, Material material)
         {
             if (player == null || material == null) return null;
@@ -120,9 +146,9 @@ namespace ShotGame.Presentation.Feedback
             var duration = _config.GrazePerfectPulseDuration;
             var progress = 1f - _pulseRemaining / duration;
             var alpha = (1f - progress) * (1f - progress);
-            SetRenderer(_pulseRenderer, _pulseProperties, _config.GrazePerfectColor, alpha,
+            SetRenderer(_pulseRenderer, _pulseProperties, Color.white, alpha,
                 _config.GrazePerfectBrightness * Mathf.Lerp(1.35f, 0.65f, progress),
-                Mathf.Lerp(0.7f, _config.GrazePerfectPulseScale, EaseOutCubic(progress)), 1.35f,
+                Mathf.Lerp(0.15f, 1f, EaseOutCubic(progress)), 0.8f,
                 0f, 0.02f, progress * 0.6f, _pulseSpriteWidth);
             if (_pulseRemaining <= 0f) _pulseRenderer.enabled = false;
         }

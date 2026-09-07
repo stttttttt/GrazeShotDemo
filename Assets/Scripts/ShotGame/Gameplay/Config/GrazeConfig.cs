@@ -6,6 +6,13 @@ namespace ShotGame.Gameplay.Config
     [CreateAssetMenu(fileName = "GrazeConfig", menuName = "Shot Game/Graze Config")]
     public sealed class GrazeConfig : ScriptableObject
     {
+        [Header("蓄力冲击波（真实秒）")]
+        [Min(0.05f)] [SerializeField] private float _shockwaveChargeDuration = 0.9f;
+        [Min(0.1f)] [SerializeField] private float _minimumShockwaveRadius = 1.1f;
+        [Min(0.1f)] [SerializeField] private float _maximumShockwaveRadius = 3.4f;
+        [Tooltip("冲击波每成功消除一枚敌弹时恢复的生命。")]
+        [Min(0f)] [SerializeField] private float _healthPerAbsorbedProjectile = 1f;
+
         [Header("擦弹窗口（真实秒）")]
         [Min(0f)] [SerializeField] private float _startupDuration = 0.03f;
         [Min(0.01f)] [SerializeField] private float _perfectDuration = 0.12f;
@@ -31,6 +38,10 @@ namespace ShotGame.Gameplay.Config
         [Range(0.01f, 1f)] [SerializeField] private float _playerMotionScaleDuringSlowTime = 0.75f;
 
         public float StartupDuration => _startupDuration;
+        public float ShockwaveChargeDuration => _shockwaveChargeDuration;
+        public float MinimumShockwaveRadius => _minimumShockwaveRadius;
+        public float MaximumShockwaveRadius => _maximumShockwaveRadius;
+        public float HealthPerAbsorbedProjectile => _healthPerAbsorbedProjectile;
         public float PerfectDuration => _perfectDuration;
         public float ActiveDuration => _activeDuration;
         public float TotalCooldown => _totalCooldown;
@@ -52,6 +63,9 @@ namespace ShotGame.Gameplay.Config
 
         public void Validate()
         {
+            if (_shockwaveChargeDuration <= 0f || _minimumShockwaveRadius <= 0f ||
+                _maximumShockwaveRadius < _minimumShockwaveRadius || _healthPerAbsorbedProjectile < 0f)
+                throw new InvalidOperationException("蓄力冲击波配置无效。");
             if (_startupDuration < 0f || _perfectDuration <= 0f || _activeDuration <= 0f)
                 throw new InvalidOperationException("擦弹窗口时长配置无效。");
             var effectiveEnd = _startupDuration + _perfectDuration + _activeDuration;

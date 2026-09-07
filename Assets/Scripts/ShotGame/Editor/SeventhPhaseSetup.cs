@@ -25,7 +25,13 @@ namespace ShotGame.Editor
         private const string GameplayConfigPath = "Assets/Res/Config/GameplayContentConfig.asset";
         private const string GameplayUiPath = "Assets/Res/UI/Panel_Gameplay.prefab";
         private const string GameplayScenePath = "Assets/Scenes/GamePlay.unity";
+        private const string MuzzleSheetPath =
+            "Assets/Art/New_All_Fire_Bullet_Pixel_16x16/All_Fire_Bullet_Pixel_16x16_00.png";
+        private const string EnemyDissolveMaterialPath =
+            "Assets/Res/Gameplay/Feel/Materials/EnemyDissolve.mat";
         private const string MarkerPath = "Assets/Scripts/ShotGame/Editor/SeventhPhaseSetupComplete.asset";
+        private const string ExpansionMarkerPath =
+            "Assets/Scripts/ShotGame/Editor/GameplayExpansionSetupComplete.asset";
 
         [InitializeOnLoadMethod]
         private static void ExecuteOnceAfterCompile()
@@ -33,6 +39,23 @@ namespace ShotGame.Editor
             if (Application.isBatchMode) return;
             if (AssetDatabase.LoadAssetAtPath<SeventhPhaseSetupMarker>(MarkerPath) != null) return;
             EditorApplication.delayCall += Execute;
+        }
+
+        [InitializeOnLoadMethod]
+        private static void RefreshGameplayHudOnce()
+        {
+            if (Application.isBatchMode) return;
+            if (AssetDatabase.LoadAssetAtPath<SeventhPhaseSetupMarker>(ExpansionMarkerPath) != null) return;
+            EditorApplication.delayCall += () =>
+            {
+                var damage = AssetDatabase.LoadAssetAtPath<DamageNumberView>(DamageNumberPath);
+                var health = AssetDatabase.LoadAssetAtPath<WorldHealthBarView>(HealthBarPath);
+                if (damage == null || health == null) return;
+                ConfigureGameplayHud(damage, health);
+                CreateMarker(ExpansionMarkerPath);
+                AssetDatabase.SaveAssets();
+                Debug.Log("Gameplay HUD 已更新：精简冲击波指示器并加入按键说明。");
+            };
         }
 
         [MenuItem("Shot Game/Setup Seventh Phase")]
@@ -59,7 +82,7 @@ namespace ShotGame.Editor
                     new Color(1f, 0.2f, 0.22f, 0.9f), 0.12f);
                 ConfigureGameplayHud(damageNumber, healthBar);
                 ConfigureGameplayScene();
-                CreateMarker();
+                CreateMarker(MarkerPath);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
                 Debug.Log("第七阶段手感配置、表现绑定、正式 HUD 与占位资源创建完成。");
@@ -83,12 +106,35 @@ namespace ShotGame.Editor
             {
                 AssetDatabase.LoadAssetAtPath<WeaponConfig>("Assets/Res/Gameplay/Weapon/PlayerShotgun.asset"),
                 AssetDatabase.LoadAssetAtPath<WeaponConfig>("Assets/Res/Gameplay/Weapon/PlayerSMG.asset"),
+                AssetDatabase.LoadAssetAtPath<WeaponConfig>("Assets/Res/Gameplay/Weapon/PlayerSniper.asset"),
                 AssetDatabase.LoadAssetAtPath<WeaponConfig>("Assets/Res/Gameplay/Weapon/TestEnemyGun.asset"),
                 AssetDatabase.LoadAssetAtPath<WeaponConfig>("Assets/Res/Gameplay/Weapon/EnemyRapidGun.asset"),
                 AssetDatabase.LoadAssetAtPath<WeaponConfig>("Assets/Res/Gameplay/Weapon/EnemyEliteGun.asset")
             }.Where(item => item != null).ToArray();
             var so = new SerializedObject(config);
             so.FindProperty("_worldEffectPrefab").objectReferenceValue = worldEffect;
+            var muzzleFrames = AssetDatabase.LoadAllAssetsAtPath(MuzzleSheetPath)
+                .OfType<Sprite>()
+                .Where(sprite => IsSelectedMuzzleFrame(sprite.name))
+                .OrderBy(sprite => sprite.name)
+                .ToArray();
+            if (muzzleFrames.Length != 5)
+                throw new InvalidOperationException($"{MuzzleSheetPath} 缺少枪口焰序列帧 168-172。");
+            var muzzleFrameProperty = so.FindProperty("_muzzleFrames");
+            muzzleFrameProperty.arraySize = muzzleFrames.Length;
+            for (var i = 0; i < muzzleFrames.Length; i++)
+                muzzleFrameProperty.GetArrayElementAtIndex(i).objectReferenceValue = muzzleFrames[i];
+            so.FindProperty("_muzzleFrameDuration").floatValue = 0.035f;
+            var hitFrames = LoadSpriteFrames(457, 443);
+            var hitFrameProperty = so.FindProperty("_hitEffectFrames");
+            hitFrameProperty.arraySize = hitFrames.Length;
+            for (var i = 0; i < hitFrames.Length; i++)
+                hitFrameProperty.GetArrayElementAtIndex(i).objectReferenceValue = hitFrames[i];
+            so.FindProperty("_hitEffectFrameDuration").floatValue = 0.055f;
+            var dissolveMaterial = AssetDatabase.LoadAssetAtPath<Material>(EnemyDissolveMaterialPath);
+            if (dissolveMaterial == null)
+                throw new InvalidOperationException($"缺少敌人死亡溶解材质：{EnemyDissolveMaterialPath}");
+            so.FindProperty("_enemyDissolveMaterial").objectReferenceValue = dissolveMaterial;
             var entries = so.FindProperty("_weaponFeedback");
             entries.arraySize = weapons.Length;
             for (var i = 0; i < weapons.Length; i++)
@@ -96,21 +142,41 @@ namespace ShotGame.Editor
                 var entry = entries.GetArrayElementAtIndex(i);
                 entry.FindPropertyRelative("_weapon").objectReferenceValue = weapons[i];
                 var shotgun = weapons[i].name.Contains("Shotgun");
+                var sniper = weapons[i].name.Contains("Sniper");
                 var enemy = weapons[i].name.Contains("Enemy") || weapons[i].name.Contains("TestEnemy");
-                entry.FindPropertyRelative("_muzzleSize").floatValue = shotgun ? 0.72f : enemy ? 0.35f : 0.42f;
-                entry.FindPropertyRelative("_cameraKick").floatValue = shotgun ? 0.16f : enemy ? 0f : 0.045f;
-                entry.FindPropertyRelative("_shakeStrength").floatValue = shotgun ? 0.1f : enemy ? 0f : 0.025f;
-                entry.FindPropertyRelative("_shakeDuration").floatValue = shotgun ? 0.12f : 0.055f;
-                entry.FindPropertyRelative("_hitStopDuration").floatValue = shotgun ? 0.022f : enemy ? 0f : 0.006f;
-                entry.FindPropertyRelative("_hitStopCooldown").floatValue = shotgun ? 0.08f : 0.07f;
-                entry.FindPropertyRelative("_muzzleColor").colorValue = enemy
-                    ? new Color(1f, 0.3f, 0.22f, 1f)
-                    : new Color(1f, 0.82f, 0.25f, 1f);
+                entry.FindPropertyRelative("_muzzleSize").floatValue = sniper ? 1.05f : shotgun ? 0.72f : enemy ? 0.35f : 0.42f;
+                entry.FindPropertyRelative("_cameraKick").floatValue = sniper ? 0.18f : shotgun ? 0.16f : enemy ? 0f : 0.045f;
+                entry.FindPropertyRelative("_shakeStrength").floatValue = sniper ? 0.18f : shotgun ? 0.1f : enemy ? 0f : 0.025f;
+                entry.FindPropertyRelative("_shakeDuration").floatValue = sniper ? 0.18f : shotgun ? 0.12f : 0.055f;
+                entry.FindPropertyRelative("_hitStopDuration").floatValue = sniper ? 0.035f : shotgun ? 0.022f : enemy ? 0f : 0.006f;
+                entry.FindPropertyRelative("_hitStopCooldown").floatValue = sniper ? 0.2f : shotgun ? 0.08f : 0.07f;
             }
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(config);
             config.Validate();
             return config;
+        }
+
+        private static bool IsSelectedMuzzleFrame(string spriteName)
+        {
+            for (var index = 168; index <= 172; index++)
+                if (spriteName.EndsWith("_" + index, StringComparison.Ordinal))
+                    return true;
+            return false;
+        }
+
+        private static Sprite[] LoadSpriteFrames(params int[] indices)
+        {
+            var sprites = AssetDatabase.LoadAllAssetsAtPath(MuzzleSheetPath).OfType<Sprite>().ToArray();
+            var result = new Sprite[indices.Length];
+            for (var i = 0; i < indices.Length; i++)
+            {
+                var expectedName = $"All_Fire_Bullet_Pixel_16x16_00_{indices[i]}";
+                result[i] = sprites.FirstOrDefault(sprite => sprite.name == expectedName);
+                if (result[i] == null)
+                    throw new InvalidOperationException($"{MuzzleSheetPath} 缺少序列帧 {expectedName}。");
+            }
+            return result;
         }
 
         private static void ConfigureContent(GameplayFeelConfig feel)
@@ -275,6 +341,7 @@ namespace ShotGame.Editor
 
                 var health = CreatePlayerHealth(hud);
                 var graze = CreateGrazeIndicator(hud);
+                var controlsHelp = CreateControlsHelp(hud);
                 var worldRoot = new GameObject("WorldUIRoot", typeof(RectTransform)).GetComponent<RectTransform>();
                 worldRoot.SetParent(hud, false);
                 Stretch(worldRoot, 0f);
@@ -287,6 +354,7 @@ namespace ShotGame.Editor
                 so.FindProperty("_worldUiRoot").objectReferenceValue = worldRoot;
                 so.FindProperty("_damageNumberPrefab").objectReferenceValue = damagePrefab;
                 so.FindProperty("_worldHealthBarPrefab").objectReferenceValue = healthBarPrefab;
+                so.FindProperty("_controlsHelpText").objectReferenceValue = controlsHelp;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 PrefabUtility.SaveAsPrefabAsset(root, GameplayUiPath);
             }
@@ -339,30 +407,39 @@ namespace ShotGame.Editor
             perfectRect.anchorMin = new Vector2(0.2f, 0.1f);
             perfectRect.anchorMax = new Vector2(0.35f, 0.9f);
             perfectRect.offsetMin = perfectRect.offsetMax = Vector2.zero;
-            var charge = CreateFill(root.transform, "ChargeFill", new Color(0.25f, 0.95f, 1f), 8f);
-            charge.rectTransform.anchorMin = new Vector2(0f, 0f);
-            charge.rectTransform.anchorMax = new Vector2(1f, 0.28f);
-            charge.rectTransform.offsetMin = new Vector2(8f, 8f);
-            charge.rectTransform.offsetMax = new Vector2(-8f, -2f);
             var phaseText = CreateLabel(root.transform, "PhaseText", "IDLE", 16, TextAnchor.UpperLeft);
             PlaceLabel(phaseText, new Vector2(12f, -8f), new Vector2(180f, 28f), new Vector2(0f, 1f));
             var chargeText = CreateLabel(root.transform, "ChargeText", "CHARGE  Lv.0", 16, TextAnchor.UpperRight);
             PlaceLabel(chargeText, new Vector2(-12f, -8f), new Vector2(180f, 28f), new Vector2(1f, 1f));
-            var combo = CreateLabel(root.transform, "ComboText", "COMBO  ×0", 18, TextAnchor.MiddleCenter);
-            PlaceLabel(combo, new Vector2(0f, -40f), new Vector2(180f, 30f), new Vector2(0.5f, 1f));
             var result = CreateLabel(root.transform, "ResultText", "完美擦弹", 26, TextAnchor.MiddleCenter);
             PlaceLabel(result, new Vector2(0f, 45f), new Vector2(240f, 42f), new Vector2(0.5f, 1f));
             result.gameObject.SetActive(false);
             var so = new SerializedObject(root.GetComponent<GrazeIndicatorView>());
             so.FindProperty("_phaseFill").objectReferenceValue = phase;
             so.FindProperty("_perfectMarker").objectReferenceValue = perfect;
-            so.FindProperty("_chargeFill").objectReferenceValue = charge;
             so.FindProperty("_phaseText").objectReferenceValue = phaseText;
             so.FindProperty("_chargeText").objectReferenceValue = chargeText;
-            so.FindProperty("_comboText").objectReferenceValue = combo;
             so.FindProperty("_resultText").objectReferenceValue = result;
             so.ApplyModifiedPropertiesWithoutUndo();
             return root.GetComponent<GrazeIndicatorView>();
+        }
+
+        private static Text CreateControlsHelp(Transform parent)
+        {
+            var text = CreateLabel(parent, "ControlsHelp", "", 16, TextAnchor.UpperRight);
+            var rect = text.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-24f, -24f);
+            rect.sizeDelta = new Vector2(470f, 190f);
+            text.color = new Color(1f, 1f, 1f, 0.86f);
+            text.text = "操作说明\n" +
+                        "WASD  移动     鼠标  瞄准\n" +
+                        "左键  开火     右键按住  蓄力冲击波\n" +
+                        "Space  冲刺（无无敌）     R  换弹\n" +
+                        "1  冲锋枪     2  霰弹枪     3  狙击枪\n" +
+                        "滚轮  切换武器     Q  上一把     Esc  暂停";
+            return text;
         }
 
         private static void ConfigureGameplayScene()
@@ -471,12 +548,12 @@ namespace ShotGame.Editor
             if (!AssetDatabase.IsValidFolder(path)) AssetDatabase.CreateFolder(parent, child);
         }
 
-        private static void CreateMarker()
+        private static void CreateMarker(string path)
         {
-            var marker = AssetDatabase.LoadAssetAtPath<SeventhPhaseSetupMarker>(MarkerPath);
+            var marker = AssetDatabase.LoadAssetAtPath<SeventhPhaseSetupMarker>(path);
             if (marker != null) return;
             marker = ScriptableObject.CreateInstance<SeventhPhaseSetupMarker>();
-            AssetDatabase.CreateAsset(marker, MarkerPath);
+            AssetDatabase.CreateAsset(marker, path);
         }
     }
 }

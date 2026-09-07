@@ -15,6 +15,8 @@ namespace ShotGame.Gameplay.Weapon
         [Min(0)] [SerializeField] private int _initialReserveAmmo = 48;
         [Min(0.01f)] [SerializeField] private float _fireInterval = 0.45f;
         [Min(0.01f)] [SerializeField] private float _reloadDuration = 1.2f;
+        [Tooltip("冲击波每消除一枚敌弹时，为当前武器补充的备弹数量。")]
+        [Min(1)] [SerializeField] private int _shockwaveAmmoPerProjectile = 1;
 
         [Header("弹丸")]
         [SerializeField] private GameObject _projectilePrefab;
@@ -24,6 +26,7 @@ namespace ShotGame.Gameplay.Weapon
         [Min(0.01f)] [SerializeField] private float _projectileSpeed = 16f;
         [Min(0.01f)] [SerializeField] private float _projectileLifetime = 2f;
         [Min(0f)] [SerializeField] private float _projectileRadius = 0.08f;
+        [Min(0)] [SerializeField] private int _penetrations;
 
         [Header("射击位移")]
         [Min(0f)] [SerializeField] private float _recoilImpulse = 5f;
@@ -35,6 +38,7 @@ namespace ShotGame.Gameplay.Weapon
         public int InitialReserveAmmo => _initialReserveAmmo;
         public float FireInterval => _fireInterval;
         public float ReloadDuration => _reloadDuration;
+        public int ShockwaveAmmoPerProjectile => _shockwaveAmmoPerProjectile;
         public GameObject ProjectilePrefab => _projectilePrefab;
         public int ProjectileCount => _projectileCount;
         public float SpreadAngle => _spreadAngle;
@@ -42,6 +46,7 @@ namespace ShotGame.Gameplay.Weapon
         public float ProjectileSpeed => _projectileSpeed;
         public float ProjectileLifetime => _projectileLifetime;
         public float ProjectileRadius => _projectileRadius;
+        public int Penetrations => _penetrations;
         public float RecoilImpulse => _recoilImpulse;
         public float MuzzleOffset => _muzzleOffset;
 
@@ -53,12 +58,14 @@ namespace ShotGame.Gameplay.Weapon
             if (_initialReserveAmmo < 0) throw new InvalidOperationException($"WeaponConfig {name} 备弹不能小于 0。");
             if (_fireInterval <= 0f) throw new InvalidOperationException($"WeaponConfig {name} 开火间隔必须大于 0。");
             if (_reloadDuration <= 0f) throw new InvalidOperationException($"WeaponConfig {name} 换弹时间必须大于 0。");
+            if (_shockwaveAmmoPerProjectile <= 0)
+                throw new InvalidOperationException($"WeaponConfig {name} 的冲击波弹药转化数量必须大于 0。");
             if (_projectilePrefab == null) throw new InvalidOperationException($"WeaponConfig {name} 缺少弹丸 Prefab。");
             if (_projectilePrefab.GetComponentInChildren<Collider2D>(true) == null)
                 throw new InvalidOperationException($"WeaponConfig {name} 的弹丸 Prefab 缺少 Collider2D。");
             if (_projectileCount <= 0) throw new InvalidOperationException($"WeaponConfig {name} 弹丸数量必须大于 0。");
             if (_damage < 0f || _projectileSpeed <= 0f || _projectileLifetime <= 0f ||
-                _projectileRadius < 0f || _recoilImpulse < 0f || _muzzleOffset < 0f)
+                _projectileRadius < 0f || _penetrations < 0 || _recoilImpulse < 0f || _muzzleOffset < 0f)
                 throw new InvalidOperationException($"WeaponConfig {name} 包含非法负数或零值。");
         }
     }

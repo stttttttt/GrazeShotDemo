@@ -4,210 +4,98 @@ using ShotGame.Gameplay.Config;
 using ShotGame.Gameplay.Entity;
 using ShotGame.Gameplay.Facts;
 using ShotGame.Gameplay.Projectile;
-using ShotGame.Gameplay.Time;
 using ShotGame.Gameplay.World;
 using UnityEngine;
 using GameEntityId = ShotGame.Gameplay.Entity.EntityId;
 
 namespace ShotGame.Gameplay.Character
 {
-    /// <summary>主动擦弹窗口、敌弹候选和擦弹结果的唯一判定入口。</summary>
-    public sealed class GrazeComponent : EntityComponent, IEntityUnscaledTickable, IEntityFixedTickable
+    /// <summary>右键蓄力与松开冲击波的玩法入口。冲击波会清除范围内敌弹并转化为备弹。</summary>
+    public sealed class GrazeComponent : EntityComponent, IEntityUnscaledTickable
     {
         private readonly GameplayWorld _world;
-        private readonly MovementComponent _movement;
-        private readonly ChargeComponent _charge;
-        private readonly TimeDilationController _timeDilation;
+        private readonly AmmoRewardComponent _ammoReward;
         private readonly GameplayFactHub _facts;
         private readonly GrazeConfig _config;
         private readonly LayerMask _projectileMask;
-        private readonly Dictionary<GameEntityId, GrazeCandidate> _candidates = new Dictionary<GameEntityId, GrazeCandidate>();
-        private readonly HashSet<GameEntityId> _resolvedProjectileIds = new HashSet<GameEntityId>();
-        private readonly HashSet<GameEntityId> _seenProjectileIds = new HashSet<GameEntityId>();
-        private readonly List<GameEntityId> _candidateIds = new List<GameEntityId>();
-        private float _totalElapsed;
+        private readonly HashSet<GameEntityId> _absorbedIds = new HashSet<GameEntityId>();
+        private float _chargeElapsed;
 
-        public GrazeComponent(GameplayWorld world, MovementComponent movement, ChargeComponent charge,
-            TimeDilationController timeDilation, GameplayFactHub facts, GrazeConfig config,
-            LayerMask projectileMask)
+        public GrazeComponent(GameplayWorld world, AmmoRewardComponent ammoReward, GameplayFactHub facts,
+            GrazeConfig config, LayerMask projectileMask)
         {
             _world = world ?? throw new ArgumentNullException(nameof(world));
-            _movement = movement ?? throw new ArgumentNullException(nameof(movement));
-            _charge = charge ?? throw new ArgumentNullException(nameof(charge));
-            _timeDilation = timeDilation ?? throw new ArgumentNullException(nameof(timeDilation));
+            _ammoReward = ammoReward ?? throw new ArgumentNullException(nameof(ammoReward));
             _facts = facts ?? throw new ArgumentNullException(nameof(facts));
             _config = config != null ? config : throw new ArgumentNullException(nameof(config));
             _projectileMask = projectileMask;
         }
 
-        public GrazePhase Phase { get; private set; } = GrazePhase.Idle;
-        public bool IsEffectiveWindow => Phase == GrazePhase.Perfect || Phase == GrazePhase.Active;
-        public float NormalizedPhaseProgress
-        {
-            get
-            {
-                switch (Phase)
-                {
-                    case GrazePhase.Startup:
-                        return Normalize(_totalElapsed, 0f, _config.StartupDuration);
-                    case GrazePhase.Perfect:
-                        return Normalize(_totalElapsed, _config.StartupDuration, _config.PerfectDuration);
-                    case GrazePhase.Active:
-                        return Normalize(_totalElapsed, _config.StartupDuration + _config.PerfectDuration,
-                            _config.ActiveDuration);
-                    case GrazePhase.Cooldown:
-                        return Normalize(_totalElapsed,
-                            _config.StartupDuration + _config.PerfectDuration + _config.ActiveDuration,
-                            _config.TotalCooldown - _config.StartupDuration - _config.PerfectDuration -
-                            _config.ActiveDuration);
-                    default:
-                        return 0f;
-                }
-            }
-        }
+        public bool IsCharging { get; private set; }
+        public float Charge01 => Mathf.Clamp01(_chargeElapsed / _config.ShockwaveChargeDuration);
+        public float PreviewRadius => Mathf.Lerp(_config.MinimumShockwaveRadius,
+            _config.MaximumShockwaveRadius, Charge01);
 
-        public void ApplyIntent(bool pressed)
+        // 保留给旧结算展示读取，实际玩法不再使用阶段窗口。
+        public GrazePhase Phase => IsCharging ? GrazePhase.Active : GrazePhase.Idle;
+        public float NormalizedPhaseProgress => Charge01;
+
+        public void ApplyIntent(bool held, bool released)
         {
-            if (!pressed || Phase != GrazePhase.Idle) return;
-            _totalElapsed = 0f;
-            ChangePhase(GrazePhase.Startup);
+            if (held && !IsCharging)
+            {
+                IsCharging = true;
+                _chargeElapsed = 0f;
+                _facts.Publish(new GrazeChargeStartedFact(Owner.Id));
+            }
+            if (IsCharging && released) ReleaseShockwave();
         }
 
         public void UnscaledTick(float unscaledDeltaTime)
         {
-            if (Phase == GrazePhase.Idle || unscaledDeltaTime <= 0f) return;
-            _totalElapsed += unscaledDeltaTime;
-            var next = GetPhase(_totalElapsed);
-            if (next != Phase) ChangePhase(next);
-        }
-
-        public void FixedTick(float fixedDeltaTime)
-        {
-            _seenProjectileIds.Clear();
-            var position = (Vector2)Owner.UnityObject.Transform.position;
-            var colliders = Physics2D.OverlapCircleAll(position, _config.GrazeSensorRadius, _projectileMask);
-            for (var i = 0; i < colliders.Length; i++)
-            {
-                if (!_world.TryGetEntity(colliders[i], out var entity) || !IsEnemyProjectile(entity)) continue;
-                if (!_seenProjectileIds.Add(entity.Id) || _resolvedProjectileIds.Contains(entity.Id)) continue;
-                if (!_candidates.TryGetValue(entity.Id, out var candidate))
-                {
-                    candidate = new GrazeCandidate();
-                    _candidates.Add(entity.Id, candidate);
-                }
-                if (IsEffectiveWindow) candidate.OverlappedActiveWindow = true;
-            }
-
-            _candidateIds.Clear();
-            _candidateIds.AddRange(_candidates.Keys);
-            for (var i = 0; i < _candidateIds.Count; i++)
-            {
-                var projectileId = _candidateIds[i];
-                if (_seenProjectileIds.Contains(projectileId)) continue;
-                var candidate = _candidates[projectileId];
-                if (_world.TryGetEntity(projectileId, out var projectile) && projectile.IsAlive &&
-                    candidate.OverlappedActiveWindow && !candidate.HitHurtbox)
-                    Resolve(projectileId, false);
-                _candidates.Remove(projectileId);
-            }
-        }
-
-        public bool TryInterceptProjectile(GameEntityId projectileId)
-        {
-            if (!projectileId.IsValid || !_world.TryGetEntity(projectileId, out var projectile) ||
-                !IsEnemyProjectile(projectile)) return false;
-            if (Phase == GrazePhase.Perfect)
-            {
-                if (_resolvedProjectileIds.Add(projectileId)) Resolve(projectileId, true);
-                _candidates.Remove(projectileId);
-                return true;
-            }
-            NotifyProjectileHit(projectileId);
-            return false;
-        }
-
-        public void NotifyProjectileHit(GameEntityId projectileId)
-        {
-            if (!projectileId.IsValid || _resolvedProjectileIds.Contains(projectileId)) return;
-            if (!_candidates.TryGetValue(projectileId, out var candidate))
-            {
-                candidate = new GrazeCandidate();
-                _candidates.Add(projectileId, candidate);
-            }
-            candidate.HitHurtbox = true;
-        }
-
-        public float GetIncomingDamageMultiplier(GameEntityId projectileId)
-        {
-            if (!projectileId.IsValid || !_world.TryGetEntity(projectileId, out var projectile) ||
-                !IsEnemyProjectile(projectile)) return 1f;
-            if (!_movement.IsRecoilMoving || IsEffectiveWindow) return 1f;
-            return 1f - _config.RecoilDamageReduction;
+            if (!IsCharging || unscaledDeltaTime <= 0f) return;
+            _chargeElapsed = Mathf.Min(_config.ShockwaveChargeDuration,
+                _chargeElapsed + unscaledDeltaTime);
         }
 
         public void NotifyOwnerDied()
         {
-            _candidates.Clear();
-            _resolvedProjectileIds.Clear();
-            _charge.Clear();
-            _timeDilation.Clear();
+            IsCharging = false;
+            _chargeElapsed = 0f;
         }
 
-        public override void Dispose()
+        private void ReleaseShockwave()
         {
-            _candidates.Clear();
-            _resolvedProjectileIds.Clear();
-            _seenProjectileIds.Clear();
-            _candidateIds.Clear();
+            var charge = Charge01;
+            var radius = PreviewRadius;
+            var position = (Vector2)Owner.UnityObject.Transform.position;
+            var absorbed = AbsorbProjectiles(position, radius);
+            var ammo = _ammoReward.AddFromAbsorbedProjectiles(absorbed);
+            var healing = Owner is CharacterEntity character
+                ? character.RestoreHealth(absorbed * _config.HealthPerAbsorbedProjectile)
+                : 0f;
+            IsCharging = false;
+            _chargeElapsed = 0f;
+            _facts.Publish(new GrazeShockwaveReleasedFact(Owner.Id, position, charge,
+                radius, absorbed, ammo, healing));
         }
 
-        private GrazePhase GetPhase(float elapsed)
+        private int AbsorbProjectiles(Vector2 center, float radius)
         {
-            if (elapsed < _config.StartupDuration) return GrazePhase.Startup;
-            if (elapsed < _config.StartupDuration + _config.PerfectDuration) return GrazePhase.Perfect;
-            if (elapsed < _config.StartupDuration + _config.PerfectDuration + _config.ActiveDuration)
-                return GrazePhase.Active;
-            return elapsed < _config.TotalCooldown ? GrazePhase.Cooldown : GrazePhase.Idle;
-        }
-
-        private static float Normalize(float elapsed, float start, float duration) =>
-            duration > 0f ? Mathf.Clamp01((elapsed - start) / duration) : 1f;
-
-        private bool IsEnemyProjectile(ShotGame.Gameplay.Entity.Entity entity)
-        {
-            if (!entity.IsAlive || entity.Category != EntityCategory.Projectile) return false;
-            var projectile = entity.GetComponent<ProjectileComponent>();
-            return projectile != null && projectile.SourceId.IsValid &&
-                   (Owner.Team == EntityTeam.Neutral || projectile.SourceTeam != Owner.Team);
-        }
-
-        private void Resolve(GameEntityId projectileId, bool perfect)
-        {
-            _resolvedProjectileIds.Add(projectileId);
-            var momentum = _movement.IsRecoilMoving;
-            var result = perfect
-                ? (momentum ? GrazeResultType.PerfectMomentum : GrazeResultType.PerfectDefensive)
-                : (momentum ? GrazeResultType.Momentum : GrazeResultType.Defensive);
-            if (momentum)
+            _absorbedIds.Clear();
+            var colliders = Physics2D.OverlapCircleAll(center, radius, _projectileMask);
+            for (var i = 0; i < colliders.Length; i++)
             {
-                _charge.AddMomentum(perfect);
-                _timeDilation.RequestMomentum(perfect);
+                if (!_world.TryGetEntity(colliders[i], out var entity) ||
+                    entity.Category != EntityCategory.Projectile || !entity.IsAlive) continue;
+                var projectile = entity.GetComponent<ProjectileComponent>();
+                if (projectile == null || projectile.SourceTeam == Owner.Team ||
+                    !_absorbedIds.Add(entity.Id)) continue;
+                _world.Despawn(entity.Id);
             }
-            _facts.Publish(new GrazeSucceededFact(Owner.Id, projectileId, result,
-                _charge.ComboCount, _charge.ChargeLevel));
+            return _absorbedIds.Count;
         }
 
-        private void ChangePhase(GrazePhase next)
-        {
-            var previous = Phase;
-            Phase = next;
-            _facts.Publish(new GrazePhaseChangedFact(Owner.Id, previous, next));
-        }
-
-        private sealed class GrazeCandidate
-        {
-            public bool OverlappedActiveWindow;
-            public bool HitHurtbox;
-        }
+        public override void Dispose() => _absorbedIds.Clear();
     }
 }

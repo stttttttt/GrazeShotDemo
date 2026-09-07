@@ -53,7 +53,7 @@ namespace ShotGame.Gameplay.Run
         public float CountdownRemaining => _countdownRemaining;
         public float WaveIntervalRemaining => _intervalRemaining;
         public int CurrentWaveIndex { get; private set; } = -1;
-        public int TotalWaveCount => _plan.Waves.Count;
+        public int TotalWaveCount => _plan.IsEndless ? 0 : _plan.Waves.Count;
 
         public void Start()
         {
@@ -117,24 +117,25 @@ namespace ShotGame.Gameplay.Run
         private void BeginNextWave()
         {
             CurrentWaveIndex++;
-            if (CurrentWaveIndex >= _plan.Waves.Count)
+            var wave = _plan.GetWave(CurrentWaveIndex);
+            if (wave == null)
             {
                 RequestVictory();
                 return;
             }
             if (!_world.IsSimulationEnabled) _world.SetSimulationEnabled(true);
             ChangeState(GameplayRunState.WaveActive);
-            _waveController.StartWave(_plan.Waves[CurrentWaveIndex], _plan.Waves.Count);
+            _waveController.StartWave(wave, TotalWaveCount);
         }
 
         private void CompleteCurrentWave()
         {
-            if (CurrentWaveIndex >= _plan.Waves.Count - 1)
+            if (!_plan.IsEndless && CurrentWaveIndex >= _plan.Waves.Count - 1)
             {
                 RequestVictory();
                 return;
             }
-            _intervalRemaining = _plan.Waves[CurrentWaveIndex].IntervalAfter;
+            _intervalRemaining = _plan.GetWave(CurrentWaveIndex).IntervalAfter;
             ChangeState(GameplayRunState.WaveInterval);
             _facts.Publish(new WaveIntervalStartedFact(CurrentWaveIndex + 2, _intervalRemaining));
             if (_intervalRemaining <= 0f) BeginNextWave();
@@ -171,7 +172,7 @@ namespace ShotGame.Gameplay.Run
                 grazePhase = player.GetComponent<GrazeComponent>()?.Phase ?? GrazePhase.Idle;
             }
             Result = new GameplayResult(resultType, Math.Max(0d, _time.ElapsedTime - _startedAt),
-                Math.Max(1, CurrentWaveIndex + 1), _plan.Waves.Count,
+                Math.Max(1, CurrentWaveIndex + 1), TotalWaveCount,
                 _lastDamageSourceId, _lastDamageAmount, weaponName, grazePhase);
             _waveController.Stop();
             _timeDilation.Clear();

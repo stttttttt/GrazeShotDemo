@@ -25,6 +25,11 @@ namespace ShotGame.Gameplay.Config
         [Min(0.01f)] [SerializeField] private float _playerMaxRecoilSpeed = 12f;
         [Min(0.01f)] [SerializeField] private float _playerRecoilRecovery = 8f;
 
+        [Header("玩家冲刺")]
+        [Min(0.01f)] [SerializeField] private float _playerDashDistance = 2.4f;
+        [Min(0.01f)] [SerializeField] private float _playerDashDuration = 0.12f;
+        [Min(0.01f)] [SerializeField] private float _playerDashCooldown = 0.65f;
+
         [Header("Gameplay 物理查询")]
         [SerializeField] private LayerMask _playerTargetMask;
         [SerializeField] private LayerMask _enemyTargetMask;
@@ -49,6 +54,9 @@ namespace ShotGame.Gameplay.Config
         public WeaponConfig TestEnemyWeapon => _testEnemyWeapon;
         public float PlayerMaxRecoilSpeed => _playerMaxRecoilSpeed;
         public float PlayerRecoilRecovery => _playerRecoilRecovery;
+        public float PlayerDashDistance => _playerDashDistance;
+        public float PlayerDashDuration => _playerDashDuration;
+        public float PlayerDashCooldown => _playerDashCooldown;
         public LayerMask PlayerTargetMask => _playerTargetMask;
         public LayerMask EnemyTargetMask => _enemyTargetMask;
         public LayerMask GrazeProjectileMask => _grazeProjectileMask;
@@ -79,6 +87,9 @@ namespace ShotGame.Gameplay.Config
             }
             if (_playerMaxRecoilSpeed <= 0f || _playerRecoilRecovery <= 0f)
                 throw new InvalidOperationException("玩家后坐最大速度和恢复速度必须大于 0。");
+            if (_playerDashDistance <= 0f || _playerDashDuration <= 0f ||
+                _playerDashCooldown < _playerDashDuration)
+                throw new InvalidOperationException("玩家冲刺距离、持续时间或冷却配置无效。");
             if (_grazeConfig == null) throw new InvalidOperationException("GameplayContentConfig 缺少 GrazeConfig。");
             _grazeConfig.Validate();
             if (_runDefinition == null) throw new InvalidOperationException("GameplayContentConfig 缺少 RunDefinition。");

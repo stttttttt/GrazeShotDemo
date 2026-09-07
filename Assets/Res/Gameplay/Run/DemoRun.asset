@@ -22,3 +22,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6502fea3278e82841be99d0a71df9599, type: 2}
   - {fileID: 11400000, guid: c50d82185ee748e4cbbc040ef2aaced4, type: 2}
   - {fileID: 11400000, guid: 7611bab5e79cacd428c1a46e395b192d, type: 2}
+  _endlessAfterLastWave: 1
+  _endlessEnemyIncreasePerWave: 2

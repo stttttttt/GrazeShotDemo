@@ -59,7 +59,10 @@ namespace ShotGame.Presentation.UI
         {
             var victory = result.Type == GameplayResultType.Victory;
             _titleText.text = victory ? "挑战成功" : "挑战失败";
-            var details = $"到达波次  {result.ReachedWaveIndex}/{result.TotalWaveCount}\n" +
+            var reachedWave = result.TotalWaveCount > 0
+                ? $"到达波次  {result.ReachedWaveIndex}/{result.TotalWaveCount}"
+                : $"到达波次  {result.ReachedWaveIndex}（无限模式）";
+            var details = reachedWave + "\n" +
                           $"用时  {result.ElapsedTime:0.0} 秒\n" +
                           $"当前武器  {result.PlayerWeaponName}";
             if (!victory)

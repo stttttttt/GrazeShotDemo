@@ -27,6 +27,7 @@ namespace ShotGame.Presentation.UI
         private readonly Dictionary<EntityId, HealthBarBinding> _healthBars =
             new Dictionary<EntityId, HealthBarBinding>();
         private readonly List<DamageNumberView> _activeDamageNumbers = new List<DamageNumberView>();
+        private readonly Queue<PendingHealing> _pendingHealing = new Queue<PendingHealing>();
         private readonly List<IDisposable> _subscriptions = new List<IDisposable>();
         private readonly List<EntityId> _staleHealthBars = new List<EntityId>();
         private bool _disposed;
@@ -68,6 +69,7 @@ namespace ShotGame.Presentation.UI
                 _damagePool.Return(_activeDamageNumbers[i]);
             _activeDamageNumbers.Clear();
             _pendingDamage.Clear();
+            _pendingHealing.Clear();
             _staleHealthBars.Clear();
             _damagePool.Dispose();
             _healthBarPool.Dispose();
@@ -77,11 +79,10 @@ namespace ShotGame.Presentation.UI
         {
             _subscriptions.Add(_session.Facts.Subscribe<ProjectileHitFact>(OnProjectileHit));
             _subscriptions.Add(_session.Facts.Subscribe<CharacterDamagedFact>(OnCharacterDamaged));
+            _subscriptions.Add(_session.Facts.Subscribe<CharacterHealedFact>(OnCharacterHealed));
             _subscriptions.Add(_session.Facts.Subscribe<CharacterDiedFact>(fact => RemoveHealthBar(fact.EntityId)));
             _subscriptions.Add(_session.Facts.Subscribe<EntityDespawnedFact>(fact => RemoveHealthBar(fact.EntityId)));
-            _subscriptions.Add(_session.Facts.Subscribe<GrazePhaseChangedFact>(OnGrazePhaseChanged));
-            _subscriptions.Add(_session.Facts.Subscribe<GrazeSucceededFact>(OnGrazeSucceeded));
-            _subscriptions.Add(_session.Facts.Subscribe<ChargeChangedFact>(OnChargeChanged));
+            _subscriptions.Add(_session.Facts.Subscribe<GrazeShockwaveReleasedFact>(OnShockwaveReleased));
         }
 
         private void InitializePlayerHud()
@@ -92,10 +93,9 @@ namespace ShotGame.Presentation.UI
             _screen.PlayerHealthView?.Initialize(attributes.GetCurrent(AttributeType.Health),
                 attributes.GetCurrent(AttributeType.MaxHealth), _config);
             GetOrCreateHealthBar(player, attributes.GetCurrent(AttributeType.MaxHealth));
-            var charge = player.GetComponent<ChargeComponent>();
-            _screen.GrazeIndicatorView?.SetCharge(charge?.ChargeLevel ?? 0, charge?.ComboCount ?? 0,
-                charge?.ChargeRemaining ?? 0f, _grazeConfig.ChargeDuration);
-            _screen.GrazeIndicatorView?.SetPhase(GrazePhase.Idle, 0f);
+            var graze = player.GetComponent<GrazeComponent>();
+            _screen.GrazeIndicatorView?.SetShockwaveCharge(false, 0f,
+                graze?.PreviewRadius ?? _grazeConfig.MinimumShockwaveRadius);
         }
 
         private void OnProjectileHit(ProjectileHitFact fact)
@@ -139,23 +139,31 @@ namespace ShotGame.Presentation.UI
             binding?.View.SetHealth(maximum > 0f ? fact.Result.HealthAfterDamage / maximum : 0f, _config);
         }
 
-        private void OnGrazePhaseChanged(GrazePhaseChangedFact fact)
+        private void OnShockwaveReleased(GrazeShockwaveReleasedFact fact)
         {
             if (fact.PlayerId != _session.PlayerEntityId) return;
-            _screen.GrazeIndicatorView?.SetPhase(fact.Current, 0f);
+            _screen.GrazeIndicatorView?.ShowShockwaveResult(fact.AbsorbedProjectiles, fact.AmmoReward,
+                fact.RestoredHealth);
         }
 
-        private void OnGrazeSucceeded(GrazeSucceededFact fact)
+        private void OnCharacterHealed(CharacterHealedFact fact)
         {
-            if (fact.PlayerId == _session.PlayerEntityId)
-                _screen.GrazeIndicatorView?.ShowResult(fact.ResultType);
-        }
-
-        private void OnChargeChanged(ChargeChangedFact fact)
-        {
-            if (fact.PlayerId != _session.PlayerEntityId) return;
-            _screen.GrazeIndicatorView?.SetCharge(fact.CurrentLevel, fact.Combo,
-                fact.RemainingDuration, _grazeConfig.ChargeDuration);
+            if (!_session.World.TryGetEntity(fact.TargetId, out var target)) return;
+            var attributes = target.GetComponent<AttributeComponent>();
+            if (attributes == null) return;
+            var maximum = attributes.GetCurrent(AttributeType.MaxHealth);
+            if (fact.TargetId == _session.PlayerEntityId)
+            {
+                _screen.PlayerHealthView?.SetImmediate(fact.HealthAfterHealing, maximum, _config);
+                GetOrCreateHealthBar(target, maximum)?.View.SetHealth(
+                    maximum > 0f ? fact.HealthAfterHealing / maximum : 0f, _config);
+            }
+            var anchor = target.UnityObject.GameObject.GetComponent<EntityFeedbackView>()?.HealthBarAnchor;
+            _pendingHealing.Enqueue(new PendingHealing
+            {
+                Value = fact.RestoredHealth,
+                Position = anchor != null ? anchor.position : target.UnityObject.Transform.position
+            });
         }
 
         private void FlushDamageNumbers()
@@ -163,6 +171,7 @@ namespace ShotGame.Presentation.UI
             if (_screen.WorldUiRoot == null || _screen.DamageNumberPrefab == null)
             {
                 _pendingDamage.Clear();
+                _pendingHealing.Clear();
                 return;
             }
             foreach (var pair in _pendingDamage)
@@ -178,6 +187,15 @@ namespace ShotGame.Presentation.UI
                 _activeDamageNumbers.Add(view);
             }
             _pendingDamage.Clear();
+            while (_pendingHealing.Count > 0)
+            {
+                var data = _pendingHealing.Dequeue();
+                var view = _damagePool.Rent();
+                if (view == null) continue;
+                view.ShowHealing(_camera.WorldToScreenPoint(data.Position), data.Value,
+                    _config.HealingNumberColor, _config.DamageNumberDuration);
+                _activeDamageNumbers.Add(view);
+            }
         }
 
         private void TickDamageNumbers(float deltaTime)
@@ -216,10 +234,8 @@ namespace ShotGame.Presentation.UI
             _screen.GrazeIndicatorView?.Tick(deltaTime);
             if (!_session.World.TryGetEntity(_session.PlayerEntityId, out var player)) return;
             var graze = player.GetComponent<GrazeComponent>();
-            if (graze != null) _screen.GrazeIndicatorView?.SetPhase(graze.Phase, graze.NormalizedPhaseProgress);
-            var charge = player.GetComponent<ChargeComponent>();
-            if (charge != null) _screen.GrazeIndicatorView?.SetCharge(charge.ChargeLevel,
-                charge.ComboCount, charge.ChargeRemaining, _grazeConfig.ChargeDuration);
+            if (graze != null) _screen.GrazeIndicatorView?.SetShockwaveCharge(graze.IsCharging,
+                graze.Charge01, graze.PreviewRadius);
         }
 
         private HealthBarBinding GetOrCreateHealthBar(GameEntity entity, float maximum)
@@ -257,6 +273,12 @@ namespace ShotGame.Presentation.UI
             public Vector2 Position;
             public bool Lethal;
             public int EmpowerLevel;
+        }
+
+        private sealed class PendingHealing
+        {
+            public float Value;
+            public Vector3 Position;
         }
 
         private sealed class HealthBarBinding

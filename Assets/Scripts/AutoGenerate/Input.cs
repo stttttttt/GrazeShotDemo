@@ -143,6 +143,16 @@ public partial class @Input: IInputActionCollection2, IDisposable
                     ""priority"": 0
                 },
                 {
+                    ""name"": ""Dash"",
+                    ""type"": ""Button"",
+                    ""id"": ""a0000000-0000-0000-0000-000000000023"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false,
+                    ""priority"": 0
+                },
+                {
                     ""name"": ""SwitchWeaponStep"",
                     ""type"": ""Value"",
                     ""id"": ""a0000000-0000-0000-0000-000000000015"",
@@ -285,7 +295,7 @@ public partial class @Input: IInputActionCollection2, IDisposable
                     ""name"": """",
                     ""id"": ""b0000000-0000-0000-0000-000000000013"",
                     ""path"": ""<Mouse>/rightButton"",
-                    ""interactions"": ""Press(behavior=1)"",
+                    ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Graze"",
@@ -300,6 +310,17 @@ public partial class @Input: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Reload"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b0000000-0000-0000-0000-000000000023"",
+                    ""path"": ""<Keyboard>/space"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Dash"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -431,6 +452,7 @@ public partial class @Input: IInputActionCollection2, IDisposable
         m_Gameplay_Fire = m_Gameplay.FindAction("Fire", throwIfNotFound: true);
         m_Gameplay_Graze = m_Gameplay.FindAction("Graze", throwIfNotFound: true);
         m_Gameplay_Reload = m_Gameplay.FindAction("Reload", throwIfNotFound: true);
+        m_Gameplay_Dash = m_Gameplay.FindAction("Dash", throwIfNotFound: true);
         m_Gameplay_SwitchWeaponStep = m_Gameplay.FindAction("SwitchWeaponStep", throwIfNotFound: true);
         m_Gameplay_WeaponSlot1 = m_Gameplay.FindAction("WeaponSlot1", throwIfNotFound: true);
         m_Gameplay_WeaponSlot2 = m_Gameplay.FindAction("WeaponSlot2", throwIfNotFound: true);
@@ -527,6 +549,7 @@ public partial class @Input: IInputActionCollection2, IDisposable
     private readonly InputAction m_Gameplay_Fire;
     private readonly InputAction m_Gameplay_Graze;
     private readonly InputAction m_Gameplay_Reload;
+    private readonly InputAction m_Gameplay_Dash;
     private readonly InputAction m_Gameplay_SwitchWeaponStep;
     private readonly InputAction m_Gameplay_WeaponSlot1;
     private readonly InputAction m_Gameplay_WeaponSlot2;
@@ -564,6 +587,10 @@ public partial class @Input: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Gameplay/Reload".
         /// </summary>
         public InputAction @Reload => m_Wrapper.m_Gameplay_Reload;
+        /// <summary>
+        /// Provides access to the underlying input action "Gameplay/Dash".
+        /// </summary>
+        public InputAction @Dash => m_Wrapper.m_Gameplay_Dash;
         /// <summary>
         /// Provides access to the underlying input action "Gameplay/SwitchWeaponStep".
         /// </summary>
@@ -629,6 +656,9 @@ public partial class @Input: IInputActionCollection2, IDisposable
             @Reload.started += instance.OnReload;
             @Reload.performed += instance.OnReload;
             @Reload.canceled += instance.OnReload;
+            @Dash.started += instance.OnDash;
+            @Dash.performed += instance.OnDash;
+            @Dash.canceled += instance.OnDash;
             @SwitchWeaponStep.started += instance.OnSwitchWeaponStep;
             @SwitchWeaponStep.performed += instance.OnSwitchWeaponStep;
             @SwitchWeaponStep.canceled += instance.OnSwitchWeaponStep;
@@ -673,6 +703,9 @@ public partial class @Input: IInputActionCollection2, IDisposable
             @Reload.started -= instance.OnReload;
             @Reload.performed -= instance.OnReload;
             @Reload.canceled -= instance.OnReload;
+            @Dash.started -= instance.OnDash;
+            @Dash.performed -= instance.OnDash;
+            @Dash.canceled -= instance.OnDash;
             @SwitchWeaponStep.started -= instance.OnSwitchWeaponStep;
             @SwitchWeaponStep.performed -= instance.OnSwitchWeaponStep;
             @SwitchWeaponStep.canceled -= instance.OnSwitchWeaponStep;
@@ -873,6 +906,13 @@ public partial class @Input: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnReload(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Dash" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnDash(InputAction.CallbackContext context);
         /// <summary>
         /// Method invoked when associated input action "SwitchWeaponStep" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>

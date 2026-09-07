@@ -12,12 +12,17 @@ namespace ShotGame.Gameplay.Config
         [Min(0f)] [SerializeField] private float _defaultWaveInterval = 3f;
         [SerializeField] private int _fixedSeed = 20260903;
         [SerializeField] private WaveDefinition[] _waves = Array.Empty<WaveDefinition>();
+        [Header("无限模式")]
+        [SerializeField] private bool _endlessAfterLastWave = true;
+        [Min(1)] [SerializeField] private int _endlessEnemyIncreasePerWave = 2;
 
         public string RunId => _runId;
         public float InitialCountdown => _initialCountdown;
         public float DefaultWaveInterval => _defaultWaveInterval;
         public int FixedSeed => _fixedSeed;
         public IReadOnlyList<WaveDefinition> Waves => _waves;
+        public bool EndlessAfterLastWave => _endlessAfterLastWave;
+        public int EndlessEnemyIncreasePerWave => _endlessEnemyIncreasePerWave;
 
         public void Validate()
         {
@@ -26,6 +31,8 @@ namespace ShotGame.Gameplay.Config
                 throw new InvalidOperationException($"Run {_runId} 的倒计时或波次间隔无效。");
             if (_waves == null || _waves.Length < 1 || _waves.Length > 8)
                 throw new InvalidOperationException($"Run {_runId} 需要配置 1 至 8 个波次。");
+            if (_endlessAfterLastWave && _endlessEnemyIncreasePerWave <= 0)
+                throw new InvalidOperationException($"Run {_runId} 的无限模式每波增量必须大于 0。");
             var definitions = new HashSet<WaveDefinition>();
             var ids = new HashSet<string>(StringComparer.Ordinal);
             var enemyIds = new Dictionary<string, EnemyConfig>(StringComparer.Ordinal);

@@ -68,12 +68,7 @@ namespace ShotGame.Presentation.UI
         private static void ApplyFill(Image image, float normalized)
         {
             if (image == null) return;
-            normalized = Mathf.Clamp01(normalized);
-            image.fillAmount = normalized;
-            var scale = image.rectTransform.localScale;
-            scale.x = normalized;
-            image.rectTransform.localScale = scale;
-            image.rectTransform.pivot = new Vector2(0f, 0.5f);
+            image.fillAmount = Mathf.Clamp01(normalized);
         }
     }
 }

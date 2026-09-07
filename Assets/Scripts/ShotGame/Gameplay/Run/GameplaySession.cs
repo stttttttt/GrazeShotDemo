@@ -63,6 +63,8 @@ namespace ShotGame.Gameplay.Run
                     contentConfig.GrazeProjectileMask,
                     contentConfig.PlayerMaxRecoilSpeed, contentConfig.PlayerRecoilRecovery,
                     contentConfig.GrazeConfig, TimeDilation, SceneContext.MovementBounds,
+                    contentConfig.PlayerDashDistance, contentConfig.PlayerDashDuration,
+                    contentConfig.PlayerDashCooldown,
                     SceneContext.WorldRoot);
                 PlayerEntityId = player.Id;
                 _input.Bind(player.GetComponent<PlayerInputComponent>(), player.UnityObject.Transform,

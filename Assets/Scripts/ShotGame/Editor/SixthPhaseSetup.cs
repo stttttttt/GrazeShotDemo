@@ -275,6 +275,8 @@ namespace ShotGame.Editor
             so.FindProperty("_initialCountdown").floatValue = 2f;
             so.FindProperty("_defaultWaveInterval").floatValue = 3f;
             so.FindProperty("_fixedSeed").intValue = 20260903;
+            so.FindProperty("_endlessAfterLastWave").boolValue = true;
+            so.FindProperty("_endlessEnemyIncreasePerWave").intValue = 2;
             var entries = so.FindProperty("_waves");
             entries.arraySize = waves.Length;
             for (var i = 0; i < waves.Length; i++)

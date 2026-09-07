@@ -15,9 +15,10 @@ MonoBehaviour:
   _displayName: 冲锋枪
   _fireMode: 1
   _magazineSize: 24
-  _initialReserveAmmo: 144
+  _initialReserveAmmo: 48
   _fireInterval: 0.1
   _reloadDuration: 1
+  _shockwaveAmmoPerProjectile: 3
   _projectilePrefab: {fileID: 711341589214670001, guid: 0d4cc415e540470a8c3bbc75b2bfd47e, type: 3}
   _projectileCount: 1
   _spreadAngle: 4

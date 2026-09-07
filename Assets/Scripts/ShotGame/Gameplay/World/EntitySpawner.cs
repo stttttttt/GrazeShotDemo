@@ -34,6 +34,7 @@ namespace ShotGame.Gameplay.World
             IReadOnlyList<WeaponConfig> weapons, LayerMask targetMask, LayerMask wallMask,
             LayerMask grazeProjectileMask, float maxRecoilSpeed, float recoilRecovery,
             GrazeConfig grazeConfig, TimeDilationController timeDilation, Bounds movementBounds,
+            float dashDistance, float dashDuration, float dashCooldown,
             Transform parent = null)
         {
             return SpawnCharacter(prefab, position, rotation, parent, EntityCategory.Player, EntityTeam.Player,
@@ -44,12 +45,15 @@ namespace ShotGame.Gameplay.World
                     var movement = character.AddComponent(new MovementComponent(attributes,
                         maxRecoilSpeed, recoilRecovery, timeDilation, movementBounds));
                     var equipment = character.AddComponent(new EquipmentComponent(weapons));
-                    var charge = character.AddComponent(new ChargeComponent(grazeConfig, _facts));
                     var execution = new WeaponExecution(this, movement, _facts, parent);
                     character.AddComponent(new WeaponUseComponent(equipment, attributes, execution,
-                        _facts, targetMask, wallMask, charge));
-                    character.AddComponent(new GrazeComponent(_world, movement, charge, timeDilation,
-                        _facts, grazeConfig, grazeProjectileMask));
+                        _facts, targetMask, wallMask));
+                    var ammoReward = character.AddComponent(new AmmoRewardComponent(equipment, _facts));
+                    character.AddComponent(new GrazeComponent(_world, ammoReward, _facts,
+                        grazeConfig, grazeProjectileMask));
+                    character.AddComponent(new AimRotationComponent());
+                    character.AddComponent(new DashComponent(movement, dashDistance, dashDuration,
+                        dashCooldown));
                     character.AddComponent(new GameplayCharacterController());
                 });
         }

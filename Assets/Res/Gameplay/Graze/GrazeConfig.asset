@@ -12,6 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 52bbb29a6d9e45be9087dd61ec570259, type: 3}
   m_Name: GrazeConfig
   m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Config.GrazeConfig
+  _shockwaveChargeDuration: 0.9
+  _minimumShockwaveRadius: 1.1
+  _maximumShockwaveRadius: 3.4
+  _healthPerAbsorbedProjectile: 1
   _startupDuration: 0.03
   _perfectDuration: 0.12
   _activeDuration: 0.22

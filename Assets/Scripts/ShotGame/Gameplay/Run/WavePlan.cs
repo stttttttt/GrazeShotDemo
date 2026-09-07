@@ -51,17 +51,53 @@ namespace ShotGame.Gameplay.Run
 
     public sealed class WavePlan
     {
-        public WavePlan(string runId, int seed, float initialCountdown, WavePlanEntry[] waves)
+        public WavePlan(string runId, int seed, float initialCountdown, WavePlanEntry[] waves,
+            bool isEndless, int endlessEnemyIncreasePerWave)
         {
             RunId = runId;
             Seed = seed;
             InitialCountdown = initialCountdown;
             Waves = waves ?? throw new ArgumentNullException(nameof(waves));
+            IsEndless = isEndless;
+            EndlessEnemyIncreasePerWave = Math.Max(1, endlessEnemyIncreasePerWave);
         }
 
         public string RunId { get; }
         public int Seed { get; }
         public float InitialCountdown { get; }
         public IReadOnlyList<WavePlanEntry> Waves { get; }
+        public bool IsEndless { get; }
+        public int EndlessEnemyIncreasePerWave { get; }
+
+        public WavePlanEntry GetWave(int waveIndex)
+        {
+            if (waveIndex < 0) throw new ArgumentOutOfRangeException(nameof(waveIndex));
+            if (waveIndex < Waves.Count) return Waves[waveIndex];
+            if (!IsEndless) return null;
+
+            var template = Waves[Waves.Count - 1];
+            var endlessNumber = waveIndex - Waves.Count + 1;
+            var extraCount = endlessNumber * EndlessEnemyIncreasePerWave;
+            var spawns = new EnemySpawnPlan[template.Spawns.Count + extraCount];
+            var lastSpawnTime = 0f;
+            for (var i = 0; i < template.Spawns.Count; i++)
+            {
+                var source = template.Spawns[i];
+                spawns[i] = new EnemySpawnPlan(i, source.SpawnTime, source.Enemy,
+                    source.SpawnId, true, false);
+                lastSpawnTime = Math.Max(lastSpawnTime, source.SpawnTime);
+            }
+            for (var i = 0; i < extraCount; i++)
+            {
+                var source = template.Spawns[i % template.Spawns.Count];
+                var index = template.Spawns.Count + i;
+                spawns[index] = new EnemySpawnPlan(index, lastSpawnTime + (i + 1) * 0.65f,
+                    source.Enemy, source.SpawnId, true, false);
+            }
+            var maxAlive = template.MaxAliveEnemies + Math.Min(4, (endlessNumber + 1) / 2);
+            return new WavePlanEntry(waveIndex, $"endless_{waveIndex + 1}",
+                $"无限模式 · 第 {waveIndex + 1} 波", WaveObjectiveType.EliminateAll,
+                template.IntervalAfter, maxAlive, spawns);
+        }
     }
 }

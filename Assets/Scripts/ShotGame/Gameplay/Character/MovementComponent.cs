@@ -16,6 +16,8 @@ namespace ShotGame.Gameplay.Character
         private readonly bool _hasMovementBounds;
         private Vector2 _moveDirection;
         private Vector2 _recoilVelocity;
+        private Vector2 _dashVelocity;
+        private float _dashRemaining;
 
         public MovementComponent(AttributeComponent attributes, float maxRecoilSpeed = 12f,
             float recoilRecovery = 8f, TimeDilationController timeDilation = null,
@@ -39,6 +41,13 @@ namespace ShotGame.Gameplay.Character
         public void AddImpulse(Vector2 impulse) =>
             _recoilVelocity = Vector2.ClampMagnitude(_recoilVelocity + impulse, _maxRecoilSpeed);
 
+        public void StartDash(Vector2 direction, float distance, float duration)
+        {
+            if (direction.sqrMagnitude <= 0.0001f || distance <= 0f || duration <= 0f) return;
+            _dashVelocity = direction.normalized * (distance / duration);
+            _dashRemaining = duration;
+        }
+
         public void FixedTick(float fixedDeltaTime)
         {
             if (_timeDilation != null && _timeDilation.IsActive)
@@ -48,17 +57,21 @@ namespace ShotGame.Gameplay.Character
             }
             var moveSpeed = _attributes.GetCurrent(AttributeType.MoveSpeed);
             var velocity = _moveDirection * moveSpeed + _recoilVelocity;
+            var dashDeltaTime = Mathf.Min(fixedDeltaTime, _dashRemaining);
             var rigidbody = Owner.UnityObject.Rigidbody;
             var currentPosition = rigidbody != null
                 ? rigidbody.position
                 : (Vector2)Owner.UnityObject.Transform.position;
-            var targetPosition = currentPosition + velocity * fixedDeltaTime;
+            var targetPosition = currentPosition + velocity * fixedDeltaTime +
+                                 _dashVelocity * dashDeltaTime;
             if (_hasMovementBounds) targetPosition = ClampToMovementBounds(targetPosition);
             if (rigidbody != null) rigidbody.MovePosition(targetPosition);
             else Owner.UnityObject.Transform.position = targetPosition;
 
             _recoilVelocity = Vector2.MoveTowards(_recoilVelocity, Vector2.zero,
                 _recoilRecovery * fixedDeltaTime);
+            _dashRemaining = Mathf.Max(0f, _dashRemaining - fixedDeltaTime);
+            if (_dashRemaining <= 0f) _dashVelocity = Vector2.zero;
         }
 
         private Vector2 ClampToMovementBounds(Vector2 position)

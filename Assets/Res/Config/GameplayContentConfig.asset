@@ -18,11 +18,15 @@ MonoBehaviour:
   _testEnemyCount: 0
   _testEnemyAttackRange: 5
   _playerInitialWeapons:
-  - {fileID: 11400000, guid: 33c75b84a5114d4d9fd18aae068ca070, type: 2}
   - {fileID: 11400000, guid: a29d88edae294176a46f208aee78d690, type: 2}
+  - {fileID: 11400000, guid: 33c75b84a5114d4d9fd18aae068ca070, type: 2}
+  - {fileID: 11400000, guid: c82ea51f4b3d46908f127acd65e90312, type: 2}
   _testEnemyWeapon: {fileID: 11400000, guid: 6cd671a32eb443d59a7a62186ff020b1, type: 2}
   _playerMaxRecoilSpeed: 12
   _playerRecoilRecovery: 8
+  _playerDashDistance: 2.4
+  _playerDashDuration: 0.12
+  _playerDashCooldown: 0.65
   _playerTargetMask:
     serializedVersion: 2
     m_Bits: 512

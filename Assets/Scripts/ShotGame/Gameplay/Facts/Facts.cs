@@ -32,11 +32,22 @@ namespace ShotGame.Gameplay.Facts
         public DamageResult Result { get; }
     }
 
+    public readonly struct CharacterHealedFact
+    {
+        public CharacterHealedFact(GameEntityId targetId, float restoredHealth, float healthAfterHealing)
+        { TargetId = targetId; RestoredHealth = restoredHealth; HealthAfterHealing = healthAfterHealing; }
+        public GameEntityId TargetId { get; }
+        public float RestoredHealth { get; }
+        public float HealthAfterHealing { get; }
+    }
+
     public readonly struct CharacterDiedFact
     {
-        public CharacterDiedFact(GameEntityId entityId, EntityCategory category) { EntityId = entityId; Category = category; }
+        public CharacterDiedFact(GameEntityId entityId, EntityCategory category, GameEntityId killerId)
+        { EntityId = entityId; Category = category; KillerId = killerId; }
         public GameEntityId EntityId { get; }
         public EntityCategory Category { get; }
+        public GameEntityId KillerId { get; }
     }
 
     public readonly struct ShotFiredFact
@@ -132,6 +143,42 @@ namespace ShotGame.Gameplay.Facts
         public GrazeResultType ResultType { get; }
         public int Combo { get; }
         public int ChargeLevel { get; }
+    }
+
+    public readonly struct GrazeChargeStartedFact
+    {
+        public GrazeChargeStartedFact(GameEntityId playerId) => PlayerId = playerId;
+        public GameEntityId PlayerId { get; }
+    }
+
+    public readonly struct GrazeShockwaveReleasedFact
+    {
+        public GrazeShockwaveReleasedFact(GameEntityId playerId, Vector2 position, float charge01,
+            float radius, int absorbedProjectiles, int ammoReward, float restoredHealth)
+        {
+            PlayerId = playerId;
+            Position = position;
+            Charge01 = charge01;
+            Radius = radius;
+            AbsorbedProjectiles = absorbedProjectiles;
+            AmmoReward = ammoReward;
+            RestoredHealth = restoredHealth;
+        }
+        public GameEntityId PlayerId { get; }
+        public Vector2 Position { get; }
+        public float Charge01 { get; }
+        public float Radius { get; }
+        public int AbsorbedProjectiles { get; }
+        public int AmmoReward { get; }
+        public float RestoredHealth { get; }
+    }
+
+    public readonly struct AmmoRewardedFact
+    {
+        public AmmoRewardedFact(GameEntityId playerId, int amount)
+        { PlayerId = playerId; Amount = amount; }
+        public GameEntityId PlayerId { get; }
+        public int Amount { get; }
     }
 
     public readonly struct ChargeChangedFact

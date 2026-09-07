@@ -18,7 +18,8 @@ namespace ShotGame.Gameplay.Run
             var waves = new WavePlanEntry[definition.Waves.Count];
             for (var i = 0; i < waves.Length; i++)
                 waves[i] = BuildWave(i, definition.Waves[i], definition.DefaultWaveInterval, groups, random);
-            return new WavePlan(definition.RunId, definition.FixedSeed, definition.InitialCountdown, waves);
+            return new WavePlan(definition.RunId, definition.FixedSeed, definition.InitialCountdown, waves,
+                definition.EndlessAfterLastWave, definition.EndlessEnemyIncreasePerWave);
         }
 
         private static WavePlanEntry BuildWave(int waveIndex, WaveDefinition definition,

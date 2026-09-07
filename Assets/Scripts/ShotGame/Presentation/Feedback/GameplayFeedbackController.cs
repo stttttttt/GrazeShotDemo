@@ -20,6 +20,8 @@ namespace ShotGame.Presentation.Feedback
         private readonly CameraFeedbackController _camera;
         private readonly AudioFeedbackController _audio;
         private readonly FeedbackObjectPool<WorldEffectView> _effectPool;
+        private readonly FeedbackObjectPool<DeathDissolveView> _deathDissolvePool;
+        private readonly DeathDissolveView _deathDissolveTemplate;
         private readonly GameplayUIFeedbackController _ui;
         private readonly Dictionary<EntityId, EntityVisualState> _entities =
             new Dictionary<EntityId, EntityVisualState>();
@@ -27,6 +29,10 @@ namespace ShotGame.Presentation.Feedback
             new Dictionary<EntityId, GameplayFeelConfig.WeaponFeedbackEntry>();
         private readonly Dictionary<EntityId, float> _hitStopCooldowns = new Dictionary<EntityId, float>();
         private readonly List<EffectState> _effects = new List<EffectState>();
+        private readonly List<MuzzleFlashState> _muzzleFlashes = new List<MuzzleFlashState>();
+        private readonly List<MuzzleFlashState> _hitEffects = new List<MuzzleFlashState>();
+        private readonly List<ShellCasingState> _shellCasings = new List<ShellCasingState>();
+        private readonly List<DeathDissolveState> _deathDissolves = new List<DeathDissolveState>();
         private readonly List<IDisposable> _subscriptions = new List<IDisposable>();
         private readonly List<EntityId> _cooldownKeys = new List<EntityId>();
         private PlayerGrazeEffectView _playerGrazeView;
@@ -51,6 +57,13 @@ namespace ShotGame.Presentation.Feedback
                 ? _config.WorldEffectPrefab.GetComponent<WorldEffectView>() : null;
             _effectPool = new FeedbackObjectPool<WorldEffectView>(effectPrefab,
                 bindings != null ? bindings.TemporaryEffectRoot : root, 40);
+            var deathRoot = bindings != null ? bindings.PersistentEffectRoot : root;
+            var deathTemplateObject = new GameObject("DeathDissolveTemplate", typeof(DeathDissolveView));
+            deathTemplateObject.transform.SetParent(deathRoot, false);
+            deathTemplateObject.SetActive(false);
+            _deathDissolveTemplate = deathTemplateObject.GetComponent<DeathDissolveView>();
+            _deathDissolvePool = new FeedbackObjectPool<DeathDissolveView>(_deathDissolveTemplate,
+                deathRoot, _config.EnemyDissolvePoolLimit);
             _ui = screen != null
                 ? new GameplayUIFeedbackController(session, screen, _config, content.GrazeConfig)
                 : null;
@@ -65,6 +78,10 @@ namespace ShotGame.Presentation.Feedback
             TickGrazeEffect(unscaledDeltaTime);
             TickEntities(unscaledDeltaTime);
             TickEffects(unscaledDeltaTime);
+            TickMuzzleFlashes(unscaledDeltaTime);
+            TickAnimatedEffects(unscaledDeltaTime, _hitEffects);
+            TickShellCasings(unscaledDeltaTime);
+            TickDeathDissolves(unscaledDeltaTime);
             _camera.Tick(unscaledDeltaTime);
             _ui?.Tick(unscaledDeltaTime);
         }
@@ -83,8 +100,20 @@ namespace ShotGame.Presentation.Feedback
             _cooldownKeys.Clear();
             for (var i = 0; i < _effects.Count; i++) _effectPool.Return(_effects[i].View);
             _effects.Clear();
+            for (var i = 0; i < _muzzleFlashes.Count; i++) _effectPool.Return(_muzzleFlashes[i].View);
+            _muzzleFlashes.Clear();
+            for (var i = 0; i < _hitEffects.Count; i++) _effectPool.Return(_hitEffects[i].View);
+            _hitEffects.Clear();
+            for (var i = 0; i < _shellCasings.Count; i++) _effectPool.Return(_shellCasings[i].View);
+            _shellCasings.Clear();
+            for (var i = 0; i < _deathDissolves.Count; i++)
+                _deathDissolvePool.Return(_deathDissolves[i].View);
+            _deathDissolves.Clear();
             _ui?.Dispose();
             _effectPool.Dispose();
+            _deathDissolvePool.Dispose();
+            if (_deathDissolveTemplate != null)
+                UnityEngine.Object.Destroy(_deathDissolveTemplate.gameObject);
             _camera.Reset();
             _audio.Stop();
         }
@@ -98,8 +127,7 @@ namespace ShotGame.Presentation.Feedback
             _subscriptions.Add(_session.Facts.Subscribe<ProjectileWallHitFact>(OnWallHit));
             _subscriptions.Add(_session.Facts.Subscribe<CharacterDamagedFact>(OnCharacterDamaged));
             _subscriptions.Add(_session.Facts.Subscribe<CharacterDiedFact>(OnCharacterDied));
-            _subscriptions.Add(_session.Facts.Subscribe<GrazePhaseChangedFact>(OnGrazePhaseChanged));
-            _subscriptions.Add(_session.Facts.Subscribe<GrazeSucceededFact>(OnGrazeSucceeded));
+            _subscriptions.Add(_session.Facts.Subscribe<GrazeShockwaveReleasedFact>(OnShockwaveReleased));
         }
 
         private void RegisterEntity(EntityId id)
@@ -111,7 +139,7 @@ namespace ShotGame.Presentation.Feedback
                 _playerGraze = entity.GetComponent<GrazeComponent>();
                 _playerGrazeView = PlayerGrazeEffectView.GetOrCreate(entity.UnityObject.GameObject,
                     _config.GrazeRingMaterial);
-                _playerGrazeView?.Initialize(_config, _grazeConfig.GrazeSensorRadius);
+                _playerGrazeView?.Initialize(_config, _grazeConfig.MaximumShockwaveRadius);
             }
             var view = entity.UnityObject.GameObject.GetComponent<EntityFeedbackView>();
             if (view == null) return;
@@ -140,9 +168,9 @@ namespace ShotGame.Presentation.Feedback
             var profile = _config.FindWeapon(fact.WeaponConfig);
             if (profile != null) _lastWeapon[fact.SourceId] = profile;
             var size = profile?.MuzzleSize ?? 0.42f;
-            var color = profile?.MuzzleColor ?? new Color(1f, 0.82f, 0.25f, 1f);
-            if (fact.EmpowerLevel > 0) color = _config.EmpoweredDamageNumberColor;
-            SpawnEffect(fact.Origin, fact.Direction, color, size, 0.07f);
+            SpawnMuzzleFlash(fact.Origin, fact.Direction, size);
+            if (fact.SourceTeam == EntityTeam.Player)
+                SpawnShellCasing(fact.Origin, fact.Direction);
             _audio.Play(profile?.FireAudio, fact.SourceTeam == EntityTeam.Player ? 1f : 0.55f, 0.025f);
             if (_entities.TryGetValue(fact.SourceId, out var entity))
             {
@@ -160,10 +188,14 @@ namespace ShotGame.Presentation.Feedback
         {
             if (fact.DamageResult.AppliedDamage <= 0f) return;
             var color = fact.EmpowerLevel > 0 ? _config.EmpoweredDamageNumberColor : _config.HitFlashColor;
-            SpawnEffect(fact.HitPosition, fact.HitNormal, color,
-                fact.DamageResult.Killed ? 0.55f : 0.32f, fact.DamageResult.Killed ? 0.18f : 0.1f);
+            SpawnHitEffect(fact.HitPosition, fact.HitNormal, fact.DamageResult.Killed);
             _audio.Play(_config.HitAudio, 0.7f, 0.05f);
-            Flash(fact.TargetId, color, _config.FlashDuration, fact.DamageResult.Killed ? 1.28f : 1.12f);
+            var hitShakeDirection = Vector2.zero;
+            if (_session.World.TryGetEntity(fact.TargetId, out var target) &&
+                target.Category == EntityCategory.Enemy)
+                hitShakeDirection = -fact.Direction;
+            Flash(fact.TargetId, color, _config.FlashDuration,
+                fact.DamageResult.Killed ? 1.28f : 1.12f, hitShakeDirection);
 
             if (_lastWeapon.TryGetValue(fact.SourceId, out var profile) && profile.HitStopDuration > 0f &&
                 (!_hitStopCooldowns.TryGetValue(fact.SourceId, out var cooldown) || cooldown <= 0f))
@@ -191,9 +223,13 @@ namespace ShotGame.Presentation.Feedback
         private void OnCharacterDied(CharacterDiedFact fact)
         {
             if (_session.World.TryGetEntity(fact.EntityId, out var entity))
+            {
+                if (fact.Category == EntityCategory.Enemy)
+                    SpawnDeathDissolve(entity.UnityObject.GameObject.GetComponent<EntityFeedbackView>());
                 SpawnEffect(entity.UnityObject.Transform.position, Vector2.up,
                     fact.Category == EntityCategory.Player ? _config.PlayerDamageColor : _config.LethalDamageNumberColor,
                     fact.Category == EntityCategory.Player ? 1.1f : 0.8f, 0.3f);
+            }
             _camera.AddShake(_config.DeathShakeStrength, _config.DeathShakeDuration);
             _audio.Play(_config.DeathAudio);
         }
@@ -218,14 +254,26 @@ namespace ShotGame.Presentation.Feedback
                 _audio.Play(_config.PerfectReadyAudio, 0.85f, 0.03f);
         }
 
+        private void OnShockwaveReleased(GrazeShockwaveReleasedFact fact)
+        {
+            if (fact.PlayerId != _session.PlayerEntityId) return;
+            _playerGrazeView?.PlayShockwave(fact.Radius, fact.Charge01);
+            SpawnEffect(fact.Position, Vector2.up, Color.white,
+                Mathf.Lerp(0.65f, 1.2f, fact.Charge01), 0.18f);
+            _audio.Play(fact.Charge01 >= 0.99f ? _config.PerfectGrazeAudio : _config.GrazeAudio);
+            _camera.AddShake(Mathf.Lerp(0.025f, 0.08f, fact.Charge01), 0.1f);
+        }
+
         private void TickGrazeEffect(float unscaledDeltaTime)
         {
             if (_playerGrazeView == null || _playerGraze == null) return;
-            _playerGrazeView.SetPhase(_playerGraze.Phase, _playerGraze.NormalizedPhaseProgress);
+            _playerGrazeView.SetCharging(_playerGraze.IsCharging, _playerGraze.Charge01,
+                _playerGraze.PreviewRadius);
             _playerGrazeView.Tick(unscaledDeltaTime);
         }
 
-        private void Flash(EntityId id, Color color, float duration, float scale)
+        private void Flash(EntityId id, Color color, float duration, float scale,
+            Vector2 hitDirection = default)
         {
             RegisterEntity(id);
             if (!_entities.TryGetValue(id, out var state)) return;
@@ -233,6 +281,12 @@ namespace ShotGame.Presentation.Feedback
             state.FlashRemaining = Mathf.Max(state.FlashRemaining, duration);
             state.Scale = Mathf.Max(state.Scale, scale);
             state.ScaleRemaining = Mathf.Max(state.ScaleRemaining, duration * 2f);
+            if (hitDirection.sqrMagnitude > 0.0001f)
+            {
+                state.ShakeDirection = hitDirection.normalized;
+                state.ShakeDuration = _config.EnemyHitShakeDuration;
+                state.ShakeRemaining = _config.EnemyHitShakeDuration;
+            }
         }
 
         private void SpawnEffect(Vector2 position, Vector2 direction, Color color, float size, float duration)
@@ -263,6 +317,18 @@ namespace ShotGame.Presentation.Feedback
                     state.View.SetScale(Mathf.Lerp(1f, state.Scale, Mathf.Clamp01(t)));
                 }
                 else state.View.SetScale(1f);
+                if (state.ShakeRemaining > 0f)
+                {
+                    state.ShakeRemaining = Mathf.Max(0f, state.ShakeRemaining - deltaTime);
+                    var progress = 1f - state.ShakeRemaining / state.ShakeDuration;
+                    var envelope = 1f - progress;
+                    var forward = Mathf.Sin(progress * Mathf.PI * 5f);
+                    var side = Mathf.Sin(progress * Mathf.PI * 8f) * 0.3f;
+                    var perpendicular = new Vector2(-state.ShakeDirection.y, state.ShakeDirection.x);
+                    state.View.SetHitOffset((state.ShakeDirection * forward + perpendicular * side) *
+                                            (_config.EnemyHitShakeDistance * envelope));
+                }
+                else state.View.SetHitOffset(Vector2.zero);
             }
         }
 
@@ -278,6 +344,121 @@ namespace ShotGame.Presentation.Feedback
                 state.View.SetVisual(color, Mathf.Lerp(state.Size, state.Size * 1.8f, t));
                 if (t < 1f) continue;
                 _effects.RemoveAt(i);
+                _effectPool.Return(state.View);
+            }
+        }
+
+        private void SpawnMuzzleFlash(Vector2 origin, Vector2 direction, float size)
+        {
+            var frames = _config.MuzzleFrames;
+            if (frames == null || frames.Count == 0 || frames[0] == null) return;
+            var view = _effectPool.Rent();
+            if (view == null) return;
+            var normalized = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
+            // ShotFiredFact.Origin 就是弹丸生成点，枪口焰直接以此为中心，避免视觉脱离枪口。
+            var angle = Mathf.Atan2(normalized.y, normalized.x) * Mathf.Rad2Deg;
+            view.ShowSprite(origin, angle, frames[0], size);
+            _muzzleFlashes.Add(new MuzzleFlashState(view, frames, _config.MuzzleFrameDuration));
+        }
+
+        private void SpawnHitEffect(Vector2 position, Vector2 normal, bool lethal)
+        {
+            var frames = _config.HitEffectFrames;
+            if (frames == null || frames.Count == 0 || frames[0] == null) return;
+            var view = _effectPool.Rent();
+            if (view == null) return;
+            var direction = normal.sqrMagnitude > 0.0001f ? normal.normalized : Vector2.right;
+            var angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            view.ShowSprite(position, angle, frames[0],
+                lethal ? _config.LethalHitEffectSize : _config.HitEffectSize);
+            _hitEffects.Add(new MuzzleFlashState(view, frames, _config.HitEffectFrameDuration));
+        }
+
+        private void SpawnDeathDissolve(EntityFeedbackView source)
+        {
+            if (source == null) return;
+            var view = _deathDissolvePool.Rent();
+            if (view == null) return;
+            if (!view.Show(source, _config.EnemyDissolveMaterial))
+            {
+                _deathDissolvePool.Return(view);
+                return;
+            }
+            view.SetDissolve(0f, _config.EnemyDissolveEdgeColor, _config.EnemyDissolveEdgeWidth);
+            _deathDissolves.Add(new DeathDissolveState(view, _config.EnemyDissolveDuration));
+        }
+
+        private void SpawnShellCasing(Vector2 origin, Vector2 fireDirection)
+        {
+            var view = _effectPool.Rent();
+            if (view == null) return;
+            var direction = fireDirection.sqrMagnitude > 0.0001f ? fireDirection.normalized : Vector2.right;
+            var side = new Vector2(-direction.y, direction.x);
+            var speed = UnityEngine.Random.Range(_config.ShellEjectSpeedRange.x,
+                _config.ShellEjectSpeedRange.y);
+            var velocity = side * speed + direction * UnityEngine.Random.Range(-0.65f, -0.15f) +
+                           Vector2.up * UnityEngine.Random.Range(0.25f, 0.8f);
+            var position = origin - direction * 0.18f + side * 0.12f;
+            var angle = UnityEngine.Random.Range(0f, 360f);
+            view.ShowRectangle(position, angle, _config.ShellColor, _config.ShellSize);
+            _shellCasings.Add(new ShellCasingState(view, _config.ShellColor, _config.ShellSize,
+                velocity, UnityEngine.Random.Range(-720f, 720f), _config.ShellLifetime));
+        }
+
+        private void TickMuzzleFlashes(float deltaTime)
+        {
+            TickAnimatedEffects(deltaTime, _muzzleFlashes);
+        }
+
+        private void TickAnimatedEffects(float deltaTime, List<MuzzleFlashState> effects)
+        {
+            for (var i = effects.Count - 1; i >= 0; i--)
+            {
+                var state = effects[i];
+                state.Elapsed += deltaTime;
+                var frameIndex = Mathf.FloorToInt(state.Elapsed / state.FrameDuration);
+                if (frameIndex < state.Frames.Count)
+                {
+                    var frame = state.Frames[frameIndex];
+                    if (frame != null) state.View.SetSprite(frame);
+                    continue;
+                }
+                effects.RemoveAt(i);
+                _effectPool.Return(state.View);
+            }
+        }
+
+        private void TickDeathDissolves(float deltaTime)
+        {
+            for (var i = _deathDissolves.Count - 1; i >= 0; i--)
+            {
+                var state = _deathDissolves[i];
+                state.Elapsed += deltaTime;
+                var progress = Mathf.Clamp01(state.Elapsed / state.Duration);
+                state.View.SetDissolve(progress, _config.EnemyDissolveEdgeColor,
+                    _config.EnemyDissolveEdgeWidth);
+                if (progress < 1f) continue;
+                _deathDissolves.RemoveAt(i);
+                _deathDissolvePool.Return(state.View);
+            }
+        }
+
+        private void TickShellCasings(float deltaTime)
+        {
+            for (var i = _shellCasings.Count - 1; i >= 0; i--)
+            {
+                var state = _shellCasings[i];
+                state.Elapsed += deltaTime;
+                var t = Mathf.Clamp01(state.Elapsed / state.Duration);
+                state.Velocity += Vector2.down * (_config.ShellGravity * deltaTime);
+                state.Velocity *= Mathf.Exp(-1.8f * deltaTime);
+                state.View.transform.position += (Vector3)(state.Velocity * deltaTime);
+                state.View.transform.Rotate(0f, 0f, state.AngularSpeed * deltaTime);
+                var color = state.Color;
+                color.a *= 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.55f, 1f, t));
+                state.View.SetRectangleVisual(color, state.Size * Mathf.Lerp(1f, 0.72f, t));
+                if (t < 1f) continue;
+                _shellCasings.RemoveAt(i);
                 _effectPool.Return(state.View);
             }
         }
@@ -300,6 +481,9 @@ namespace ShotGame.Presentation.Feedback
             public float FlashRemaining;
             public float Scale = 1f;
             public float ScaleRemaining;
+            public Vector2 ShakeDirection;
+            public float ShakeDuration;
+            public float ShakeRemaining;
         }
 
         private sealed class EffectState
@@ -314,6 +498,55 @@ namespace ShotGame.Presentation.Feedback
             public readonly WorldEffectView View;
             public readonly Color Color;
             public readonly float Size;
+            public readonly float Duration;
+            public float Elapsed;
+        }
+
+        private sealed class MuzzleFlashState
+        {
+            public MuzzleFlashState(WorldEffectView view, IReadOnlyList<Sprite> frames,
+                float frameDuration)
+            {
+                View = view;
+                Frames = frames;
+                FrameDuration = Mathf.Max(0.01f, frameDuration);
+            }
+            public readonly WorldEffectView View;
+            public readonly IReadOnlyList<Sprite> Frames;
+            public readonly float FrameDuration;
+            public float Elapsed;
+        }
+
+        private sealed class ShellCasingState
+        {
+            public ShellCasingState(WorldEffectView view, Color color, Vector2 size,
+                Vector2 velocity, float angularSpeed, float duration)
+            {
+                View = view;
+                Color = color;
+                Size = size;
+                Velocity = velocity;
+                AngularSpeed = angularSpeed;
+                Duration = Mathf.Max(0.01f, duration);
+            }
+            public readonly WorldEffectView View;
+            public readonly Color Color;
+            public readonly Vector2 Size;
+            public readonly float AngularSpeed;
+            public readonly float Duration;
+            public Vector2 Velocity;
+            public float Elapsed;
+        }
+
+        private sealed class DeathDissolveState
+        {
+            public DeathDissolveState(DeathDissolveView view, float duration)
+            {
+                View = view;
+                Duration = Mathf.Max(0.01f, duration);
+            }
+
+            public readonly DeathDissolveView View;
             public readonly float Duration;
             public float Elapsed;
         }

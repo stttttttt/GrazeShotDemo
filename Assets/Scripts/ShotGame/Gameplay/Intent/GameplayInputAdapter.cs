@@ -13,6 +13,7 @@ namespace ShotGame.Gameplay.Intent
         private readonly InputAction _fire;
         private readonly InputAction _graze;
         private readonly InputAction _reload;
+        private readonly InputAction _dash;
         private readonly InputAction _switchWeaponStep;
         private readonly InputAction _weaponSlot1;
         private readonly InputAction _weaponSlot2;
@@ -37,6 +38,7 @@ namespace ShotGame.Gameplay.Intent
             _fire = RequireAction(_gameplayMap, "Fire");
             _graze = RequireAction(_gameplayMap, "Graze");
             _reload = RequireAction(_gameplayMap, "Reload");
+            _dash = RequireAction(_gameplayMap, "Dash");
             _switchWeaponStep = RequireAction(_gameplayMap, "SwitchWeaponStep");
             _weaponSlot1 = RequireAction(_gameplayMap, "WeaponSlot1");
             _weaponSlot2 = RequireAction(_gameplayMap, "WeaponSlot2");
@@ -64,8 +66,9 @@ namespace ShotGame.Gameplay.Intent
             _playerInput.SetMoveDirection(_move.ReadValue<Vector2>());
             UpdateAim();
             _playerInput.SetFire(_fire.IsPressed());
-            if (_graze.WasPressedThisFrame()) _playerInput.PressGraze();
+            _playerInput.SetGraze(_graze.IsPressed());
             if (_reload.WasPressedThisFrame()) _playerInput.PressReload();
+            if (_dash.WasPressedThisFrame()) _playerInput.PressDash();
             if (_weaponSlot1.WasPressedThisFrame()) _playerInput.SelectWeaponSlot(1);
             if (_weaponSlot2.WasPressedThisFrame()) _playerInput.SelectWeaponSlot(2);
             if (_weaponSlot3.WasPressedThisFrame()) _playerInput.SelectWeaponSlot(3);
@@ -85,6 +88,7 @@ namespace ShotGame.Gameplay.Intent
         public void Unbind()
         {
             _playerInput?.SetFire(false);
+            _playerInput?.SetGraze(false);
             _playerInput?.SetMoveDirection(Vector2.zero);
             _playerInput = null;
             _playerTransform = null;
@@ -101,7 +105,11 @@ namespace ShotGame.Gameplay.Intent
 
         private void UpdateAim()
         {
-            var pointer = _aim.ReadValue<Vector2>();
+            // 鼠标为当前 Demo 的主瞄准设备，直接读取指针位置可保证朝向更新及时。
+            // 保留 Aim Action 作为没有鼠标时的兼容输入来源。
+            var pointer = Mouse.current != null
+                ? Mouse.current.position.ReadValue()
+                : _aim.ReadValue<Vector2>();
             var depth = Mathf.Abs(_camera.transform.position.z - _playerTransform.position.z);
             var worldPoint = _camera.ScreenToWorldPoint(new Vector3(pointer.x, pointer.y, depth));
             var direction = (Vector2)(worldPoint - _playerTransform.position);

@@ -12,18 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4587e8a059014b10a2fe46a0482fb2e5, type: 3}
   m_Name: PlayerShotgun
   m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Weapon.WeaponConfig
-  _displayName: 散弹枪
+  _displayName: "\u6563\u5F39\u67AA"
   _fireMode: 0
-  _magazineSize: 6
-  _initialReserveAmmo: 48
+  _magazineSize: 2
+  _initialReserveAmmo: 2
   _fireInterval: 0.45
-  _reloadDuration: 1.2
+  _reloadDuration: 0.6
+  _shockwaveAmmoPerProjectile: 1
   _projectilePrefab: {fileID: 701341589214670001, guid: 5f4faeaf2288446e855d188cc6139273, type: 3}
-  _projectileCount: 5
-  _spreadAngle: 24
-  _damage: 8
+  _projectileCount: 8
+  _spreadAngle: 60
+  _damage: 4
   _projectileSpeed: 16
-  _projectileLifetime: 1.2
-  _projectileRadius: 0.13
+  _projectileLifetime: 0.4
+  _projectileRadius: 0.08
+  _penetrations: 0
   _recoilImpulse: 7
   _muzzleOffset: 0.55

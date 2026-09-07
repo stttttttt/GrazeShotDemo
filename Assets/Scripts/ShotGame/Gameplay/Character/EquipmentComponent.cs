@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ShotGame.Gameplay.Entity;
 using ShotGame.Gameplay.Intent;
 using ShotGame.Gameplay.Weapon;
+using ShotGame.Gameplay.Facts;
 
 namespace ShotGame.Gameplay.Character
 {
@@ -52,6 +53,36 @@ namespace ShotGame.Gameplay.Character
             var direction = step > 0 ? 1 : -1;
             var next = (_currentIndex + direction + _weapons.Count) % _weapons.Count;
             return TrySelectSlot(next + 1);
+        }
+    }
+
+    /// <summary>冲击波弹药转化入口，按当前武器配置补充备弹。</summary>
+    public sealed class AmmoRewardComponent : EntityComponent
+    {
+        private readonly EquipmentComponent _equipment;
+        private readonly GameplayFactHub _facts;
+
+        public AmmoRewardComponent(EquipmentComponent equipment, GameplayFactHub facts)
+        {
+            _equipment = equipment ?? throw new ArgumentNullException(nameof(equipment));
+            _facts = facts ?? throw new ArgumentNullException(nameof(facts));
+        }
+
+        public int AddFromAbsorbedProjectiles(int count)
+        {
+            var amountPerProjectile = _equipment.CurrentWeapon.Config.ShockwaveAmmoPerProjectile;
+            return AddAmmo(Math.Max(0, count) * amountPerProjectile);
+        }
+
+        private int AddAmmo(int amount)
+        {
+            var weapon = _equipment.CurrentWeapon;
+            var added = weapon.AddReserveAmmo(amount);
+            if (added <= 0) return 0;
+            _facts.Publish(new AmmoRewardedFact(Owner.Id, added));
+            _facts.Publish(new WeaponStateChangedFact(Owner.Id, _equipment.CurrentWeaponSlot,
+                weapon.Config.DisplayName, weapon.State, weapon.MagazineAmmo, weapon.ReserveAmmo));
+            return added;
         }
     }
 }

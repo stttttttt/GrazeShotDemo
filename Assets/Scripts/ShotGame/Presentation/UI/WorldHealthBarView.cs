@@ -13,6 +13,8 @@ namespace ShotGame.Presentation.UI
         private float _immediateValue = 1f;
         private float _delayedValue = 1f;
         private float _hold;
+        private float _impactRemaining;
+        private Vector2 _screenPosition;
 
         public void SetStyle(Color immediateColor, Color delayedColor, Vector2 size)
         {
@@ -31,12 +33,15 @@ namespace ShotGame.Presentation.UI
             ApplyFill(_immediateFill, _immediateValue);
             ApplyFill(_delayedDamageFill, _delayedValue);
             if (_canvasGroup != null) _canvasGroup.alpha = visible ? 1f : 0f;
+            _impactRemaining = 0f;
+            transform.localScale = Vector3.one;
             gameObject.SetActive(true);
         }
 
         public void SetHealth(float normalized, GameplayFeelConfig config)
         {
             _target = Mathf.Clamp01(normalized);
+            // 前景条必须在伤害事件当帧反映真实血量；平滑反馈由延迟条负责。
             _immediateValue = _target;
             ApplyFill(_immediateFill, _immediateValue);
             if (_delayedValue < _target)
@@ -46,9 +51,14 @@ namespace ShotGame.Presentation.UI
             }
             if (_canvasGroup != null) _canvasGroup.alpha = 1f;
             _hold = config.HealthDamageHold;
+            _impactRemaining = config.HealthBarHitDuration;
         }
 
-        public void SetScreenPosition(Vector2 position) => ((RectTransform)transform).position = position;
+        public void SetScreenPosition(Vector2 position)
+        {
+            _screenPosition = position;
+            if (_impactRemaining <= 0f) ((RectTransform)transform).position = position;
+        }
 
         public void Tick(float deltaTime, GameplayFeelConfig config)
         {
@@ -59,17 +69,28 @@ namespace ShotGame.Presentation.UI
                     _target, deltaTime / config.HealthDelayedDuration);
                 ApplyFill(_delayedDamageFill, _delayedValue);
             }
+            if (_impactRemaining > 0f)
+            {
+                _impactRemaining = Mathf.Max(0f, _impactRemaining - deltaTime);
+                var progress = 1f - _impactRemaining / config.HealthBarHitDuration;
+                var envelope = 1f - progress;
+                var offset = Mathf.Sin(progress * Mathf.PI * 6f) *
+                             config.HealthBarHitShakeDistance * envelope;
+                ((RectTransform)transform).position = _screenPosition + Vector2.right * offset;
+                var pulse = Mathf.Sin(progress * Mathf.PI) * config.HealthBarHitPulseScale;
+                transform.localScale = Vector3.one * (1f + pulse);
+            }
+            else
+            {
+                ((RectTransform)transform).position = _screenPosition;
+                transform.localScale = Vector3.one;
+            }
         }
 
         private static void ApplyFill(Image image, float normalized)
         {
             if (image == null) return;
-            normalized = Mathf.Clamp01(normalized);
-            image.fillAmount = normalized;
-            var scale = image.rectTransform.localScale;
-            scale.x = normalized;
-            image.rectTransform.localScale = scale;
-            image.rectTransform.pivot = new Vector2(0f, 0.5f);
+            image.fillAmount = Mathf.Clamp01(normalized);
         }
     }
 }

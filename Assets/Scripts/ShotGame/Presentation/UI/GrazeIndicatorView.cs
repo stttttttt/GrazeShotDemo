@@ -1,4 +1,3 @@
-using ShotGame.Gameplay.Character;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,44 +7,31 @@ namespace ShotGame.Presentation.UI
     {
         [SerializeField] private Image _phaseFill;
         [SerializeField] private Graphic _perfectMarker;
-        [SerializeField] private Image _chargeFill;
         [SerializeField] private Text _phaseText;
         [SerializeField] private Text _chargeText;
-        [SerializeField] private Text _comboText;
         [SerializeField] private Text _resultText;
         private float _resultRemaining;
 
-        public void SetPhase(GrazePhase phase, float progress)
+        public void SetShockwaveCharge(bool charging, float progress, float radius)
         {
-            if (_phaseFill != null)
-            {
-                _phaseFill.fillAmount = Mathf.Clamp01(progress);
-                _phaseFill.color = PhaseColor(phase);
-            }
-            if (_perfectMarker != null) _perfectMarker.enabled = phase == GrazePhase.Perfect;
-            if (_phaseText != null) _phaseText.text = PhaseName(phase);
+            ApplyFill(_phaseFill, charging ? progress : 0f);
+            if (_phaseFill != null) _phaseFill.color = progress >= 1f
+                ? new Color(0.35f, 1f, 1f) : Color.white;
+            if (_perfectMarker != null) _perfectMarker.enabled = charging && progress >= 1f;
+            if (_phaseText != null) _phaseText.text = charging
+                ? $"冲击波蓄力  {Mathf.RoundToInt(progress * 100f)}%" : "按住右键蓄力";
+            if (_chargeText != null) _chargeText.text = $"释放范围  {radius:0.0}";
         }
 
-        public void SetCharge(int level, int combo, float remaining, float maxDuration)
-        {
-            if (_chargeFill != null) _chargeFill.fillAmount = maxDuration > 0f
-                ? Mathf.Clamp01(remaining / maxDuration) : (level > 0 ? 1f : 0f);
-            if (_chargeText != null) _chargeText.text = $"CHARGE  Lv.{level}";
-            if (_comboText != null)
-            {
-                _comboText.gameObject.SetActive(combo > 0);
-                _comboText.text = $"COMBO  ×{combo}";
-            }
-        }
-
-        public void ShowResult(GrazeResultType result)
+        public void ShowShockwaveResult(int absorbed, int ammo, float healing)
         {
             if (_resultText == null) return;
-            _resultText.text = result == GrazeResultType.PerfectMomentum ||
-                result == GrazeResultType.PerfectDefensive ? "完美擦弹" : "擦弹成功";
+            _resultText.text = absorbed > 0
+                ? $"吸收 {absorbed} 发  +{ammo} 弹药  +{Mathf.RoundToInt(healing)} 生命"
+                : "冲击波释放";
             _resultText.gameObject.SetActive(true);
             _resultText.transform.localScale = Vector3.one * 1.25f;
-            _resultRemaining = 0.55f;
+            _resultRemaining = 0.7f;
         }
 
         public void Tick(float deltaTime)
@@ -57,20 +43,12 @@ namespace ShotGame.Presentation.UI
             if (_resultRemaining <= 0f) _resultText.gameObject.SetActive(false);
         }
 
-        private static Color PhaseColor(GrazePhase phase)
+        private static void ApplyFill(Image image, float value)
         {
-            switch (phase)
-            {
-                case GrazePhase.Startup: return new Color(0.3f, 0.75f, 1f);
-                case GrazePhase.Perfect: return new Color(0.35f, 1f, 0.55f);
-                case GrazePhase.Active: return new Color(1f, 0.82f, 0.25f);
-                case GrazePhase.Cooldown: return new Color(0.35f, 0.38f, 0.45f);
-                default: return new Color(0.18f, 0.2f, 0.26f);
-            }
+            if (image == null) return;
+            value = Mathf.Clamp01(value);
+            if (image.sprite != null && image.type == Image.Type.Filled) image.fillAmount = value;
+            else image.rectTransform.localScale = new Vector3(value, 1f, 1f);
         }
-
-        private static string PhaseName(GrazePhase phase) => phase == GrazePhase.Perfect
-            ? "PERFECT"
-            : phase.ToString().ToUpperInvariant();
     }
 }
