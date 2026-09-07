@@ -16,6 +16,7 @@ namespace ShotGame.Presentation.Feedback
     {
         private readonly GameplaySession _session;
         private readonly GameplayFeelConfig _config;
+        private readonly GrazeConfig _grazeConfig;
         private readonly CameraFeedbackController _camera;
         private readonly AudioFeedbackController _audio;
         private readonly FeedbackObjectPool<WorldEffectView> _effectPool;
@@ -28,6 +29,8 @@ namespace ShotGame.Presentation.Feedback
         private readonly List<EffectState> _effects = new List<EffectState>();
         private readonly List<IDisposable> _subscriptions = new List<IDisposable>();
         private readonly List<EntityId> _cooldownKeys = new List<EntityId>();
+        private PlayerGrazeEffectView _playerGrazeView;
+        private GrazeComponent _playerGraze;
         private bool _disposed;
 
         public GameplayFeedbackController(GameplaySession session, GameplayContentConfig content,
@@ -36,6 +39,9 @@ namespace ShotGame.Presentation.Feedback
             _session = session ?? throw new ArgumentNullException(nameof(session));
             if (content == null) throw new ArgumentNullException(nameof(content));
             _config = content.FeelConfig != null ? content.FeelConfig : throw new ArgumentNullException(nameof(content.FeelConfig));
+            _grazeConfig = content.GrazeConfig != null
+                ? content.GrazeConfig
+                : throw new ArgumentNullException(nameof(content.GrazeConfig));
             var root = session.SceneContext.PresentationRoot;
             var bindings = root.GetComponent<GameplayPresentationBindings>();
             var audioSource = bindings != null ? bindings.AudioSource : root.GetComponent<AudioSource>();
@@ -56,6 +62,7 @@ namespace ShotGame.Presentation.Feedback
         {
             if (_disposed || unscaledDeltaTime <= 0f) return;
             TickCooldowns(unscaledDeltaTime);
+            TickGrazeEffect(unscaledDeltaTime);
             TickEntities(unscaledDeltaTime);
             TickEffects(unscaledDeltaTime);
             _camera.Tick(unscaledDeltaTime);
@@ -68,6 +75,9 @@ namespace ShotGame.Presentation.Feedback
             _disposed = true;
             for (var i = 0; i < _subscriptions.Count; i++) _subscriptions[i].Dispose();
             _subscriptions.Clear();
+            _playerGrazeView?.ResetVisual();
+            _playerGrazeView = null;
+            _playerGraze = null;
             foreach (var pair in _entities) pair.Value.View?.ResetVisual();
             _entities.Clear();
             _cooldownKeys.Clear();
@@ -88,6 +98,7 @@ namespace ShotGame.Presentation.Feedback
             _subscriptions.Add(_session.Facts.Subscribe<ProjectileWallHitFact>(OnWallHit));
             _subscriptions.Add(_session.Facts.Subscribe<CharacterDamagedFact>(OnCharacterDamaged));
             _subscriptions.Add(_session.Facts.Subscribe<CharacterDiedFact>(OnCharacterDied));
+            _subscriptions.Add(_session.Facts.Subscribe<GrazePhaseChangedFact>(OnGrazePhaseChanged));
             _subscriptions.Add(_session.Facts.Subscribe<GrazeSucceededFact>(OnGrazeSucceeded));
         }
 
@@ -95,6 +106,13 @@ namespace ShotGame.Presentation.Feedback
         {
             if (!id.IsValid || _entities.ContainsKey(id) || !_session.World.TryGetEntity(id, out var entity) ||
                 entity.UnityObject.GameObject == null) return;
+            if (id == _session.PlayerEntityId)
+            {
+                _playerGraze = entity.GetComponent<GrazeComponent>();
+                _playerGrazeView = PlayerGrazeEffectView.GetOrCreate(entity.UnityObject.GameObject,
+                    _config.GrazeRingMaterial);
+                _playerGrazeView?.Initialize(_config, _grazeConfig.GrazeSensorRadius);
+            }
             var view = entity.UnityObject.GameObject.GetComponent<EntityFeedbackView>();
             if (view == null) return;
             view.CaptureDefaults();
@@ -190,6 +208,21 @@ namespace ShotGame.Presentation.Feedback
                     perfect ? 1.15f : 0.8f, perfect ? 0.28f : 0.18f);
             _audio.Play(perfect ? _config.PerfectGrazeAudio : _config.GrazeAudio);
             if (perfect) _camera.AddShake(0.07f, 0.1f);
+        }
+
+        private void OnGrazePhaseChanged(GrazePhaseChangedFact fact)
+        {
+            if (fact.PlayerId != _session.PlayerEntityId) return;
+            _playerGrazeView?.NotifyPhaseChanged(fact.Current);
+            if (fact.Current == GrazePhase.Perfect)
+                _audio.Play(_config.PerfectReadyAudio, 0.85f, 0.03f);
+        }
+
+        private void TickGrazeEffect(float unscaledDeltaTime)
+        {
+            if (_playerGrazeView == null || _playerGraze == null) return;
+            _playerGrazeView.SetPhase(_playerGraze.Phase, _playerGraze.NormalizedPhaseProgress);
+            _playerGrazeView.Tick(unscaledDeltaTime);
         }
 
         private void Flash(EntityId id, Color color, float duration, float scale)

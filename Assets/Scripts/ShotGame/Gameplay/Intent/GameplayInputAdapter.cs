@@ -8,6 +8,7 @@ namespace ShotGame.Gameplay.Intent
     public sealed class GameplayInputAdapter : IDisposable
     {
         private readonly InputActionMap _gameplayMap;
+        private readonly InputAction _move;
         private readonly InputAction _aim;
         private readonly InputAction _fire;
         private readonly InputAction _graze;
@@ -31,6 +32,7 @@ namespace ShotGame.Gameplay.Intent
         {
             if (actions == null) throw new ArgumentNullException(nameof(actions));
             _gameplayMap = RequireMap(actions, "Gameplay");
+            _move = RequireAction(_gameplayMap, "Move");
             _aim = RequireAction(_gameplayMap, "Aim");
             _fire = RequireAction(_gameplayMap, "Fire");
             _graze = RequireAction(_gameplayMap, "Graze");
@@ -59,6 +61,7 @@ namespace ShotGame.Gameplay.Intent
             if (_gameplayPause.WasPressedThisFrame() || _uiCancel.WasPressedThisFrame()) _pauseRequested = true;
             if (_playerInput == null || !_gameplayMap.enabled) return;
 
+            _playerInput.SetMoveDirection(_move.ReadValue<Vector2>());
             UpdateAim();
             _playerInput.SetFire(_fire.IsPressed());
             if (_graze.WasPressedThisFrame()) _playerInput.PressGraze();
@@ -82,6 +85,7 @@ namespace ShotGame.Gameplay.Intent
         public void Unbind()
         {
             _playerInput?.SetFire(false);
+            _playerInput?.SetMoveDirection(Vector2.zero);
             _playerInput = null;
             _playerTransform = null;
             _camera = null;

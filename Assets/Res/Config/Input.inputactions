@@ -6,6 +6,7 @@
             "name": "Gameplay",
             "id": "a0000000-0000-0000-0000-000000000001",
             "actions": [
+                { "name": "Move", "type": "Value", "id": "a0000000-0000-0000-0000-000000000010", "expectedControlType": "Vector2", "processors": "", "interactions": "", "initialStateCheck": true },
                 { "name": "Aim", "type": "Value", "id": "a0000000-0000-0000-0000-000000000011", "expectedControlType": "Vector2", "processors": "", "interactions": "", "initialStateCheck": true },
                 { "name": "Fire", "type": "Button", "id": "a0000000-0000-0000-0000-000000000012", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
                 { "name": "Graze", "type": "Button", "id": "a0000000-0000-0000-0000-000000000013", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false },
@@ -18,6 +19,11 @@
                 { "name": "Pause", "type": "Button", "id": "a0000000-0000-0000-0000-000000000020", "expectedControlType": "Button", "processors": "", "interactions": "", "initialStateCheck": false }
             ],
             "bindings": [
+                { "name": "WASD", "id": "b0000000-0000-0000-0000-000000000001", "path": "2DVector", "interactions": "", "processors": "", "groups": "", "action": "Move", "isComposite": true, "isPartOfComposite": false },
+                { "name": "up", "id": "b0000000-0000-0000-0000-000000000002", "path": "<Keyboard>/w", "interactions": "", "processors": "", "groups": "", "action": "Move", "isComposite": false, "isPartOfComposite": true },
+                { "name": "down", "id": "b0000000-0000-0000-0000-000000000003", "path": "<Keyboard>/s", "interactions": "", "processors": "", "groups": "", "action": "Move", "isComposite": false, "isPartOfComposite": true },
+                { "name": "left", "id": "b0000000-0000-0000-0000-000000000004", "path": "<Keyboard>/a", "interactions": "", "processors": "", "groups": "", "action": "Move", "isComposite": false, "isPartOfComposite": true },
+                { "name": "right", "id": "b0000000-0000-0000-0000-000000000005", "path": "<Keyboard>/d", "interactions": "", "processors": "", "groups": "", "action": "Move", "isComposite": false, "isPartOfComposite": true },
                 { "name": "", "id": "b0000000-0000-0000-0000-000000000011", "path": "<Pointer>/position", "interactions": "", "processors": "", "groups": "", "action": "Aim", "isComposite": false, "isPartOfComposite": false },
                 { "name": "", "id": "b0000000-0000-0000-0000-000000000012", "path": "<Mouse>/leftButton", "interactions": "", "processors": "", "groups": "", "action": "Fire", "isComposite": false, "isPartOfComposite": false },
                 { "name": "", "id": "b0000000-0000-0000-0000-000000000013", "path": "<Mouse>/rightButton", "interactions": "Press(behavior=1)", "processors": "", "groups": "", "action": "Graze", "isComposite": false, "isPartOfComposite": false },

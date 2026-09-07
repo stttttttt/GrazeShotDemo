@@ -61,6 +61,21 @@ namespace ShotGame.Gameplay.Config
         [Min(0f)] [SerializeField] private float _healthDamageHold = 0.22f;
         [Min(0.01f)] [SerializeField] private float _healthDelayedDuration = 0.32f;
 
+        [Header("擦弹窗口表现")]
+        [SerializeField] private Material _grazeRingMaterial;
+        [SerializeField] private Color _grazeStartupColor = new Color(0.25f, 0.7f, 1f, 1f);
+        [SerializeField] private Color _grazePerfectColor = new Color(0.35f, 1f, 0.72f, 1f);
+        [SerializeField] private Color _grazeActiveColor = new Color(1f, 0.82f, 0.25f, 1f);
+        [SerializeField] private Color _grazeCooldownColor = new Color(0.3f, 0.38f, 0.48f, 1f);
+        [Min(1f)] [SerializeField] private float _grazeStartupScale = 1.45f;
+        [Min(0.01f)] [SerializeField] private float _grazeStartupVisualDuration = 0.16f;
+        [Range(0.005f, 0.15f)] [SerializeField] private float _grazeRingThickness = 0.018f;
+        [Range(0.001f, 0.08f)] [SerializeField] private float _grazeRingSoftness = 0.006f;
+        [Range(0.05f, 1f)] [SerializeField] private float _grazeActiveAlpha = 0.3f;
+        [Min(1f)] [SerializeField] private float _grazePerfectBrightness = 2.5f;
+        [Min(1f)] [SerializeField] private float _grazePerfectPulseScale = 1.8f;
+        [Min(0.01f)] [SerializeField] private float _grazePerfectPulseDuration = 0.28f;
+
         [Header("镜头")]
         [Min(0f)] [SerializeField] private float _damageShakeStrength = 0.13f;
         [Min(0f)] [SerializeField] private float _damageShakeDuration = 0.16f;
@@ -77,6 +92,7 @@ namespace ShotGame.Gameplay.Config
         [SerializeField] private AudioClip _deathAudio;
         [SerializeField] private AudioClip _grazeAudio;
         [SerializeField] private AudioClip _perfectGrazeAudio;
+        [SerializeField] private AudioClip _perfectReadyAudio;
 
         public IReadOnlyList<WeaponFeedbackEntry> WeaponFeedback => _weaponFeedback;
         public Color HitFlashColor => _hitFlashColor;
@@ -99,6 +115,19 @@ namespace ShotGame.Gameplay.Config
         public float HealthImmediateDuration => _healthImmediateDuration;
         public float HealthDamageHold => _healthDamageHold;
         public float HealthDelayedDuration => _healthDelayedDuration;
+        public Material GrazeRingMaterial => _grazeRingMaterial;
+        public Color GrazeStartupColor => _grazeStartupColor;
+        public Color GrazePerfectColor => _grazePerfectColor;
+        public Color GrazeActiveColor => _grazeActiveColor;
+        public Color GrazeCooldownColor => _grazeCooldownColor;
+        public float GrazeStartupScale => _grazeStartupScale;
+        public float GrazeStartupVisualDuration => _grazeStartupVisualDuration;
+        public float GrazeRingThickness => _grazeRingThickness;
+        public float GrazeRingSoftness => _grazeRingSoftness;
+        public float GrazeActiveAlpha => _grazeActiveAlpha;
+        public float GrazePerfectBrightness => _grazePerfectBrightness;
+        public float GrazePerfectPulseScale => _grazePerfectPulseScale;
+        public float GrazePerfectPulseDuration => _grazePerfectPulseDuration;
         public float DamageShakeStrength => _damageShakeStrength;
         public float DamageShakeDuration => _damageShakeDuration;
         public float DeathShakeStrength => _deathShakeStrength;
@@ -112,6 +141,7 @@ namespace ShotGame.Gameplay.Config
         public AudioClip DeathAudio => _deathAudio;
         public AudioClip GrazeAudio => _grazeAudio;
         public AudioClip PerfectGrazeAudio => _perfectGrazeAudio;
+        public AudioClip PerfectReadyAudio => _perfectReadyAudio;
 
         public WeaponFeedbackEntry FindWeapon(WeaponConfig weapon)
         {
@@ -127,6 +157,12 @@ namespace ShotGame.Gameplay.Config
                 throw new InvalidOperationException("GameplayFeelConfig 的 UI 对象上限必须大于 0。");
             if (_healthImmediateDuration <= 0f || _healthDelayedDuration <= 0f || _cameraRecovery <= 0f)
                 throw new InvalidOperationException("GameplayFeelConfig 包含非法动画时长。");
+            if (_grazeStartupScale < 1f || _grazeStartupVisualDuration <= 0f ||
+                _grazeRingThickness <= 0f || _grazeRingSoftness <= 0f ||
+                _grazePerfectPulseScale < 1f || _grazePerfectPulseDuration <= 0f)
+                throw new InvalidOperationException("GameplayFeelConfig 包含非法擦弹表现参数。");
+            if (_grazeRingMaterial == null)
+                throw new InvalidOperationException("GameplayFeelConfig 缺少擦弹圆环材质。");
         }
     }
 }

@@ -69,9 +69,28 @@ MonoBehaviour:
   _damageNumberLimit: 24
   _worldHealthBarLimit: 12
   _lowHealthThreshold: 0.3
+  _playerHealthBarColor: {r: 0.18, g: 0.9, b: 0.34, a: 1}
+  _playerDelayedHealthBarColor: {r: 0.7, g: 1, b: 0.35, a: 1}
+  _playerHealthBarSize: {x: 112, y: 14}
+  _enemyHealthBarColor: {r: 0.9, g: 0.2, b: 0.2, a: 1}
+  _enemyDelayedHealthBarColor: {r: 1, g: 0.72, b: 0.18, a: 1}
+  _enemyHealthBarSize: {x: 76, y: 10}
   _healthImmediateDuration: 0.08
   _healthDamageHold: 0.22
   _healthDelayedDuration: 0.32
+  _grazeRingMaterial: {fileID: 2100000, guid: d1b8f44890aecb24487cb0b6867a19c7, type: 2}
+  _grazeStartupColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+  _grazePerfectColor: {r: 0.35, g: 1, b: 0.72, a: 1}
+  _grazeActiveColor: {r: 1, g: 0.82, b: 0.25, a: 1}
+  _grazeCooldownColor: {r: 0.3, g: 0.38, b: 0.48, a: 1}
+  _grazeStartupScale: 1.45
+  _grazeStartupVisualDuration: 0.16
+  _grazeRingThickness: 0.018
+  _grazeRingSoftness: 0.006
+  _grazeActiveAlpha: 0.3
+  _grazePerfectBrightness: 2.5
+  _grazePerfectPulseScale: 1.8
+  _grazePerfectPulseDuration: 0.28
   _damageShakeStrength: 0.13
   _damageShakeDuration: 0.16
   _deathShakeStrength: 0.18
@@ -85,3 +104,4 @@ MonoBehaviour:
   _deathAudio: {fileID: 0}
   _grazeAudio: {fileID: 0}
   _perfectGrazeAudio: {fileID: 0}
+  _perfectReadyAudio: {fileID: 0}

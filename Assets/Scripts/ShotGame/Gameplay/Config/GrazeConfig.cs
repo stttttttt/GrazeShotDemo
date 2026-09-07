@@ -7,27 +7,27 @@ namespace ShotGame.Gameplay.Config
     public sealed class GrazeConfig : ScriptableObject
     {
         [Header("擦弹窗口（真实秒）")]
-        [Min(0f)] [SerializeField] private float _startupDuration = 0.02f;
-        [Min(0.01f)] [SerializeField] private float _perfectDuration = 0.07f;
-        [Min(0.01f)] [SerializeField] private float _activeDuration = 0.1f;
-        [Min(0.01f)] [SerializeField] private float _totalCooldown = 0.35f;
-        [Min(0.01f)] [SerializeField] private float _grazeSensorRadius = 0.95f;
+        [Min(0f)] [SerializeField] private float _startupDuration = 0.03f;
+        [Min(0.01f)] [SerializeField] private float _perfectDuration = 0.12f;
+        [Min(0.01f)] [SerializeField] private float _activeDuration = 0.22f;
+        [Min(0.01f)] [SerializeField] private float _totalCooldown = 0.6f;
+        [Min(0.01f)] [SerializeField] private float _grazeSensorRadius = 0.9f;
         [Range(0f, 0.95f)] [SerializeField] private float _recoilDamageReduction = 0.35f;
 
         [Header("充能与连段（真实秒）")]
         [Range(1, 3)] [SerializeField] private int _maxChargeLevel = 3;
         [Min(0.01f)] [SerializeField] private float _chargeDuration = 6f;
-        [Min(0.01f)] [SerializeField] private float _comboGracePeriod = 1.2f;
+        [Min(0.01f)] [SerializeField] private float _comboGracePeriod = 1.4f;
         [SerializeField] private Vector3 _damageMultipliers = new Vector3(1.25f, 1.5f, 2f);
         [SerializeField] private Vector3 _radiusMultipliers = new Vector3(1.15f, 1.3f, 1.6f);
         [SerializeField] private Vector3Int _penetrations = new Vector3Int(0, 1, 2);
 
         [Header("子弹时间（真实秒）")]
-        [Range(0.01f, 1f)] [SerializeField] private float _momentumTimeScale = 0.25f;
+        [Range(0.01f, 1f)] [SerializeField] private float _momentumTimeScale = 0.35f;
         [Min(0.01f)] [SerializeField] private float _momentumDuration = 0.18f;
-        [Range(0.01f, 1f)] [SerializeField] private float _perfectTimeScale = 0.15f;
-        [Min(0.01f)] [SerializeField] private float _perfectSlowTimeDuration = 0.28f;
-        [Min(0.01f)] [SerializeField] private float _maxAccumulatedDuration = 0.6f;
+        [Range(0.01f, 1f)] [SerializeField] private float _perfectTimeScale = 0.2f;
+        [Min(0.01f)] [SerializeField] private float _perfectSlowTimeDuration = 0.26f;
+        [Min(0.01f)] [SerializeField] private float _maxAccumulatedDuration = 0.5f;
         [Range(0.01f, 1f)] [SerializeField] private float _playerMotionScaleDuringSlowTime = 0.75f;
 
         public float StartupDuration => _startupDuration;

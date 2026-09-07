@@ -12,15 +12,21 @@ namespace ShotGame.Presentation.UI
         [SerializeField] private Graphic _lowHealthFrame;
 
         private float _target;
+        private float _immediateValue = 1f;
+        private float _delayedValue = 1f;
         private float _holdRemaining;
         private float _pulse;
 
         public void SetImmediate(float current, float maximum, GameplayFeelConfig config)
         {
             var normalized = maximum > 0f ? Mathf.Clamp01(current / maximum) : 0f;
-            if (_immediateFill != null) _immediateFill.fillAmount = normalized;
-            if (_delayedDamageFill != null && _delayedDamageFill.fillAmount < normalized)
-                _delayedDamageFill.fillAmount = normalized;
+            _immediateValue = normalized;
+            ApplyFill(_immediateFill, _immediateValue);
+            if (_delayedValue < normalized)
+            {
+                _delayedValue = normalized;
+                ApplyFill(_delayedDamageFill, _delayedValue);
+            }
             if (_healthText != null) _healthText.text = $"HP  {Mathf.CeilToInt(current)} / {Mathf.CeilToInt(maximum)}";
             if (_lowHealthFrame != null) _lowHealthFrame.enabled = normalized <= config.LowHealthThreshold;
             _target = normalized;
@@ -33,8 +39,10 @@ namespace ShotGame.Presentation.UI
             if (_immediateFill != null) _immediateFill.color = config.PlayerHealthBarColor;
             if (_delayedDamageFill != null) _delayedDamageFill.color = config.PlayerDelayedHealthBarColor;
             var normalized = maximum > 0f ? Mathf.Clamp01(current / maximum) : 0f;
-            if (_immediateFill != null) _immediateFill.fillAmount = normalized;
-            if (_delayedDamageFill != null) _delayedDamageFill.fillAmount = normalized;
+            _immediateValue = normalized;
+            _delayedValue = normalized;
+            ApplyFill(_immediateFill, _immediateValue);
+            ApplyFill(_delayedDamageFill, _delayedValue);
             SetImmediate(current, maximum, config);
             _holdRemaining = 0f;
             _pulse = 0f;
@@ -44,14 +52,28 @@ namespace ShotGame.Presentation.UI
         {
             if (_holdRemaining > 0f) _holdRemaining = Mathf.Max(0f, _holdRemaining - deltaTime);
             else if (_delayedDamageFill != null)
-                _delayedDamageFill.fillAmount = Mathf.MoveTowards(_delayedDamageFill.fillAmount,
+            {
+                _delayedValue = Mathf.MoveTowards(_delayedValue,
                     _target, deltaTime / config.HealthDelayedDuration);
+                ApplyFill(_delayedDamageFill, _delayedValue);
+            }
             if (_pulse > 0f)
             {
                 _pulse = Mathf.Max(0f, _pulse - deltaTime * 6f);
                 transform.localScale = Vector3.one * (1f + Mathf.Sin(_pulse * Mathf.PI) * 0.08f);
             }
             else transform.localScale = Vector3.one;
+        }
+
+        private static void ApplyFill(Image image, float normalized)
+        {
+            if (image == null) return;
+            normalized = Mathf.Clamp01(normalized);
+            image.fillAmount = normalized;
+            var scale = image.rectTransform.localScale;
+            scale.x = normalized;
+            image.rectTransform.localScale = scale;
+            image.rectTransform.pivot = new Vector2(0f, 0.5f);
         }
     }
 }

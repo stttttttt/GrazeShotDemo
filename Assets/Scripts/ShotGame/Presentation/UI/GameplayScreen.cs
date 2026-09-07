@@ -40,8 +40,6 @@ namespace ShotGame.Presentation.UI
         private IDisposable _waveProgressSubscription;
         private IDisposable _waveIntervalSubscription;
         private string _currentObjective = "等待第一波";
-        private SpriteRenderer _playerRenderer;
-        private Color _playerDefaultColor;
 
         public static GameplayScreen ActiveInstance { get; private set; }
         public PlayerHealthView PlayerHealthView => _playerHealthView;
@@ -97,8 +95,6 @@ namespace ShotGame.Presentation.UI
             _waveProgressSubscription = null;
             _waveIntervalSubscription?.Dispose();
             _waveIntervalSubscription = null;
-            if (_playerRenderer != null) _playerRenderer.color = _playerDefaultColor;
-            _playerRenderer = null;
             _session = null;
         }
 
@@ -115,8 +111,6 @@ namespace ShotGame.Presentation.UI
             ShowCharge(charge?.ChargeLevel ?? 0, charge?.ComboCount ?? 0);
             var timeDilation = _session.TimeDilation;
             ShowTime(timeDilation?.CurrentScale ?? 1f, timeDilation != null && timeDilation.IsActive);
-            _playerRenderer = player.UnityObject.GameObject.GetComponentInChildren<SpriteRenderer>();
-            if (_playerRenderer != null) _playerDefaultColor = _playerRenderer.color;
             _waveText.text = $"开始倒计时  {Mathf.CeilToInt(_session.Run.CountdownRemaining)}";
             _objectiveText.text = _currentObjective;
         }
@@ -138,7 +132,6 @@ namespace ShotGame.Presentation.UI
         {
             if (_session == null || fact.PlayerId != _session.PlayerEntityId) return;
             _grazeText.text = $"擦弹  {fact.Current}";
-            if (_playerRenderer != null) _playerRenderer.color = GetGrazeColor(fact.Current);
         }
 
         private void OnGrazeSucceeded(GrazeSucceededFact fact)
@@ -195,17 +188,6 @@ namespace ShotGame.Presentation.UI
 
         private void ShowTime(float scale, bool active) =>
             _timeText.text = active ? $"子弹时间  ×{scale:0.00}" : "子弹时间  ×1.00";
-
-        private Color GetGrazeColor(GrazePhase phase)
-        {
-            switch (phase)
-            {
-                case GrazePhase.Startup: return new Color(0.15f, 0.48f, 0.25f);
-                case GrazePhase.Perfect: return new Color(0.35f, 1f, 0.45f);
-                case GrazePhase.Active: return new Color(0.25f, 0.72f, 0.35f);
-                default: return _playerDefaultColor;
-            }
-        }
 
         private static string GetResultName(GrazeResultType result)
         {

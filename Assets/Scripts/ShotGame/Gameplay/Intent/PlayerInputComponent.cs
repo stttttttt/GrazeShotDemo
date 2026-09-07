@@ -10,6 +10,10 @@ namespace ShotGame.Gameplay.Intent
 
         public PawnIntent GetIntent() => _intent;
 
+        /// <summary>设置玩家移动意图，并限制长度避免斜向移动速度更快。</summary>
+        public void SetMoveDirection(Vector2 direction) =>
+            _intent.MoveDirection = Vector2.ClampMagnitude(direction, 1f);
+
         public void SetAimDirection(Vector2 direction) => _intent.AimDirection = direction.normalized;
 
         public void SetFire(bool isHeld)

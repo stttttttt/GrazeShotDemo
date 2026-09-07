@@ -4,7 +4,7 @@ namespace ShotGame.Gameplay.Intent
 {
     public struct PawnIntent
     {
-        /// <summary>期望移动方向，当前主要供 AI 追击使用。</summary>
+        /// <summary>玩家输入或 AI 决策产生的期望移动方向，长度通常不超过 1。</summary>
         public Vector2 MoveDirection;
 
         /// <summary>瞄准方向。</summary>

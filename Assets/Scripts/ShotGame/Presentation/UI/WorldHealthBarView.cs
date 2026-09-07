@@ -10,6 +10,8 @@ namespace ShotGame.Presentation.UI
         [SerializeField] private Image _delayedDamageFill;
         [SerializeField] private CanvasGroup _canvasGroup;
         private float _target;
+        private float _immediateValue = 1f;
+        private float _delayedValue = 1f;
         private float _hold;
 
         public void SetStyle(Color immediateColor, Color delayedColor, Vector2 size)
@@ -24,8 +26,10 @@ namespace ShotGame.Presentation.UI
         {
             normalized = Mathf.Clamp01(normalized);
             _target = normalized;
-            if (_immediateFill != null) _immediateFill.fillAmount = normalized;
-            if (_delayedDamageFill != null) _delayedDamageFill.fillAmount = normalized;
+            _immediateValue = normalized;
+            _delayedValue = normalized;
+            ApplyFill(_immediateFill, _immediateValue);
+            ApplyFill(_delayedDamageFill, _delayedValue);
             if (_canvasGroup != null) _canvasGroup.alpha = visible ? 1f : 0f;
             gameObject.SetActive(true);
         }
@@ -33,7 +37,13 @@ namespace ShotGame.Presentation.UI
         public void SetHealth(float normalized, GameplayFeelConfig config)
         {
             _target = Mathf.Clamp01(normalized);
-            if (_immediateFill != null) _immediateFill.fillAmount = _target;
+            _immediateValue = _target;
+            ApplyFill(_immediateFill, _immediateValue);
+            if (_delayedValue < _target)
+            {
+                _delayedValue = _target;
+                ApplyFill(_delayedDamageFill, _delayedValue);
+            }
             if (_canvasGroup != null) _canvasGroup.alpha = 1f;
             _hold = config.HealthDamageHold;
         }
@@ -44,8 +54,22 @@ namespace ShotGame.Presentation.UI
         {
             if (_hold > 0f) _hold = Mathf.Max(0f, _hold - deltaTime);
             else if (_delayedDamageFill != null)
-                _delayedDamageFill.fillAmount = Mathf.MoveTowards(_delayedDamageFill.fillAmount,
+            {
+                _delayedValue = Mathf.MoveTowards(_delayedValue,
                     _target, deltaTime / config.HealthDelayedDuration);
+                ApplyFill(_delayedDamageFill, _delayedValue);
+            }
+        }
+
+        private static void ApplyFill(Image image, float normalized)
+        {
+            if (image == null) return;
+            normalized = Mathf.Clamp01(normalized);
+            image.fillAmount = normalized;
+            var scale = image.rectTransform.localScale;
+            scale.x = normalized;
+            image.rectTransform.localScale = scale;
+            image.rectTransform.pivot = new Vector2(0f, 0.5f);
         }
     }
 }
