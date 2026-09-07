@@ -55,6 +55,7 @@ namespace ShotGame.GameFlow.States
                 await Context.CreateSessionAsync(sceneContext);
 
                 await Context.UI.OpenAsync(GameplayHudPage, Context.Session);
+                Context.CreateFeedback();
                 SubscribeToSettlement();
                 Context.InputMode.SetMode(InputMode.Gameplay);
             }
@@ -91,6 +92,7 @@ namespace ShotGame.GameFlow.States
                 await Context.UI.OpenAsync(
                     GameplayResultPage,
                     new GameplayResultScreenArgs(fact.Result, RestartAsync, ReturnToMenuAsync));
+                Context.Session?.Run.Finish();
             }
             catch (Exception exception)
             {
@@ -101,8 +103,8 @@ namespace ShotGame.GameFlow.States
 
         private async Task RestartAsync()
         {
-            Context.UI.Close(GameplayResultPage);
-            Context.UI.Close(GameplayHudPage);
+            Context.InputMode.SetMode(InputMode.Disabled);
+            CloseGameplayPages();
             _settlementSubscription?.Dispose();
             _settlementSubscription = null;
             await Context.StopGameplayAsync();
@@ -110,10 +112,17 @@ namespace ShotGame.GameFlow.States
             await StartNewGameplayAsync();
         }
 
-        private Task ReturnToMenuAsync()
+        private async Task ReturnToMenuAsync()
+        {
+            Context.InputMode.SetMode(InputMode.Disabled);
+            CloseGameplayPages();
+            await Context.ChangeStateAsync(AppState.MainMenu);
+        }
+
+        private void CloseGameplayPages()
         {
             Context.UI.Close(GameplayResultPage);
-            return Context.ChangeStateAsync(AppState.MainMenu);
+            Context.UI.Close(GameplayHudPage);
         }
     }
 }

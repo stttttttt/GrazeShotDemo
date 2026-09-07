@@ -37,6 +37,9 @@ namespace ShotGame.Gameplay.Config
         [Header("第六阶段正式单局")]
         [SerializeField] private RunDefinition _runDefinition;
 
+        [Header("第七阶段手感表现")]
+        [SerializeField] private GameplayFeelConfig _feelConfig;
+
         public GameObject PlayerPrefab => _playerPrefab;
         public GameObject TestEnemyPrefab => _testEnemyPrefab;
         public bool SpawnTestEnemy => _spawnTestEnemy;
@@ -52,6 +55,7 @@ namespace ShotGame.Gameplay.Config
         public LayerMask WallMask => _wallMask;
         public GrazeConfig GrazeConfig => _grazeConfig;
         public RunDefinition RunDefinition => _runDefinition;
+        public GameplayFeelConfig FeelConfig => _feelConfig;
 
         public void Validate()
         {
@@ -79,6 +83,8 @@ namespace ShotGame.Gameplay.Config
             _grazeConfig.Validate();
             if (_runDefinition == null) throw new InvalidOperationException("GameplayContentConfig 缺少 RunDefinition。");
             _runDefinition.Validate();
+            if (_feelConfig == null) throw new InvalidOperationException("GameplayContentConfig 缺少 GameplayFeelConfig。");
+            _feelConfig.Validate();
         }
     }
 }

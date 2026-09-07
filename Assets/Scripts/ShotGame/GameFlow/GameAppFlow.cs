@@ -81,7 +81,11 @@ namespace ShotGame.GameFlow
             _context.GameplayInput.Tick();
             TryHandlePauseRequest();
             _machine.Tick(_context.Time.UnscaledDeltaTime);
-            if (CanTickGameplay()) _context.Session.Tick();
+            if (CanTickGameplay())
+            {
+                _context.Session.Tick();
+                _context.Feedback?.Tick(_context.Time.UnscaledDeltaTime);
+            }
         }
 
         public void FixedTick(float fixedDeltaTime)

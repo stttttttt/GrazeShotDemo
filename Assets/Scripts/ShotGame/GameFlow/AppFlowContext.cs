@@ -5,6 +5,8 @@ using ShotGame.Gameplay.Config;
 using ShotGame.Gameplay.Intent;
 using ShotGame.Gameplay.Run;
 using ShotGame.Gameplay.Scene;
+using ShotGame.Presentation.Feedback;
+using ShotGame.Presentation.UI;
 
 namespace ShotGame.GameFlow
 {
@@ -47,6 +49,7 @@ namespace ShotGame.GameFlow
         public GameplayInputAdapter GameplayInput { get; }
         public Action Quit { get; }
         public GameplaySession Session { get; private set; }
+        public GameplayFeedbackController Feedback { get; private set; }
 
         public Task ChangeStateAsync(AppState nextState) => _changeStateAsync(nextState);
         public void QueueState(AppState nextState) => _queueState(nextState);
@@ -82,6 +85,7 @@ namespace ShotGame.GameFlow
 
             var gameplayScene = _loadedGameplayScene;
             _loadedGameplayScene = default;
+            DisposeFeedback();
             DisposeSession();
             if (gameplayScene.IsValid && Scenes.IsLoaded(gameplayScene))
                 await Scenes.UnloadAsync(gameplayScene);
@@ -89,8 +93,23 @@ namespace ShotGame.GameFlow
 
         public void DisposeSession()
         {
+            DisposeFeedback();
             Session?.Dispose();
             Session = null;
+        }
+
+        public void CreateFeedback()
+        {
+            if (Session == null) throw new InvalidOperationException("创建表现控制器前必须先创建 GameplaySession。");
+            DisposeFeedback();
+            Feedback = new GameplayFeedbackController(Session, GameplayContent,
+                GameplayScreen.ActiveInstance);
+        }
+
+        private void DisposeFeedback()
+        {
+            Feedback?.Dispose();
+            Feedback = null;
         }
     }
 }

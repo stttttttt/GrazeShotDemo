@@ -76,6 +76,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: EliteEnemy
       objectReference: {fileID: 0}
+    - target: {fileID: 7036244018216345272, guid: 05f75d85c55658d43b2cadfc7ca76781, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.95
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

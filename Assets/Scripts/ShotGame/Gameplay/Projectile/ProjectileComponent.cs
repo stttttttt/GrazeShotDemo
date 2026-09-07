@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ShotGame.Gameplay.Combat;
 using ShotGame.Gameplay.Entity;
+using ShotGame.Gameplay.Facts;
 using ShotGame.Gameplay.World;
 using UnityEngine;
 using GameEntityId = ShotGame.Gameplay.Entity.EntityId;
@@ -13,6 +14,7 @@ namespace ShotGame.Gameplay.Projectile
     {
         private readonly GameplayWorld _world;
         private readonly EntitySpawner _spawner;
+        private readonly GameplayFactHub _facts;
         private readonly Vector2 _direction;
         private readonly float _speed;
         private readonly float _radius;
@@ -23,10 +25,12 @@ namespace ShotGame.Gameplay.Projectile
         private float _lifetimeRemaining;
         private bool _despawnRequested;
 
-        public ProjectileComponent(GameplayWorld world, EntitySpawner spawner, in ProjectileSpawnData data)
+        public ProjectileComponent(GameplayWorld world, EntitySpawner spawner, GameplayFactHub facts,
+            in ProjectileSpawnData data)
         {
             _world = world ?? throw new ArgumentNullException(nameof(world));
             _spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
+            _facts = facts ?? throw new ArgumentNullException(nameof(facts));
             SourceId = data.SourceId;
             SourceTeam = data.SourceTeam;
             _direction = data.Direction;
@@ -71,7 +75,7 @@ namespace ShotGame.Gameplay.Projectile
 
             for (var hitIndex = 0; hitIndex < maxHitsPerTick && remainingDistance > 0f; hitIndex++)
             {
-                if (!TryFindNearestHit(start, remainingDistance, out var target, out var hitDistance))
+                if (!TryFindNearestHit(start, remainingDistance, out var target, out var hit))
                 {
                     Owner.UnityObject.Transform.position = start + _direction * remainingDistance;
                     return;
@@ -79,12 +83,14 @@ namespace ShotGame.Gameplay.Projectile
 
                 if (target.Category == EntityCategory.Wall)
                 {
-                    Owner.UnityObject.Transform.position = start + _direction * Mathf.Max(0f, hitDistance);
+                    Owner.UnityObject.Transform.position = hit.point;
+                    _facts.Publish(new ProjectileWallHitFact(Owner.Id, SourceId, hit.point,
+                        GetHitNormal(hit), _direction, EmpowerLevel, SourceTeam));
                     RequestDespawn();
                     return;
                 }
 
-                ResolveHit(target);
+                ResolveHit(target, hit);
                 if (_remainingPenetrations <= 0)
                 {
                     RequestDespawn();
@@ -92,7 +98,7 @@ namespace ShotGame.Gameplay.Projectile
                 }
 
                 _remainingPenetrations--;
-                var advance = Mathf.Min(remainingDistance, Mathf.Max(0f, hitDistance) + safeOffset);
+                var advance = Mathf.Min(remainingDistance, Mathf.Max(0f, hit.distance) + safeOffset);
                 start += _direction * advance;
                 remainingDistance -= advance;
             }
@@ -101,10 +107,10 @@ namespace ShotGame.Gameplay.Projectile
         }
 
         private bool TryFindNearestHit(Vector2 start, float distance,
-            out ShotGame.Gameplay.Entity.Entity target, out float hitDistance)
+            out ShotGame.Gameplay.Entity.Entity target, out RaycastHit2D nearestHit)
         {
             target = null;
-            hitDistance = 0f;
+            nearestHit = default;
             var nearestDistance = float.MaxValue;
             var hits = Physics2D.CircleCastAll(start, _radius, _direction, distance, _queryMask);
             for (var i = 0; i < hits.Length; i++)
@@ -118,20 +124,25 @@ namespace ShotGame.Gameplay.Projectile
                 if (hits[i].distance >= nearestDistance) continue;
                 nearestDistance = hits[i].distance;
                 target = entity;
+                nearestHit = hits[i];
             }
-            hitDistance = nearestDistance;
             return target != null;
         }
 
-        private void ResolveHit(ShotGame.Gameplay.Entity.Entity target)
+        private void ResolveHit(ShotGame.Gameplay.Entity.Entity target, RaycastHit2D hit)
         {
             if (target.Category == EntityCategory.Wall) return;
             if (target is IDamageable damageable)
             {
                 _hitEntityIds.Add(target.Id);
-                damageable.TakeDamage(new DamageRequest(SourceId, SourceTeam, _damage, Owner.Id));
+                var result = damageable.TakeDamage(new DamageRequest(SourceId, SourceTeam, _damage, Owner.Id));
+                _facts.Publish(new ProjectileHitFact(Owner.Id, SourceId, target.Id, hit.point,
+                    GetHitNormal(hit), _direction, result, EmpowerLevel, SourceTeam));
             }
         }
+
+        private Vector2 GetHitNormal(RaycastHit2D hit) =>
+            hit.normal.sqrMagnitude > 0.0001f ? hit.normal : -_direction;
 
         private void RequestDespawn()
         {

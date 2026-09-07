@@ -1,0 +1,57 @@
+using ShotGame.Gameplay.Config;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace ShotGame.Presentation.UI
+{
+    public sealed class PlayerHealthView : MonoBehaviour
+    {
+        [SerializeField] private Image _immediateFill;
+        [SerializeField] private Image _delayedDamageFill;
+        [SerializeField] private Text _healthText;
+        [SerializeField] private Graphic _lowHealthFrame;
+
+        private float _target;
+        private float _holdRemaining;
+        private float _pulse;
+
+        public void SetImmediate(float current, float maximum, GameplayFeelConfig config)
+        {
+            var normalized = maximum > 0f ? Mathf.Clamp01(current / maximum) : 0f;
+            if (_immediateFill != null) _immediateFill.fillAmount = normalized;
+            if (_delayedDamageFill != null && _delayedDamageFill.fillAmount < normalized)
+                _delayedDamageFill.fillAmount = normalized;
+            if (_healthText != null) _healthText.text = $"HP  {Mathf.CeilToInt(current)} / {Mathf.CeilToInt(maximum)}";
+            if (_lowHealthFrame != null) _lowHealthFrame.enabled = normalized <= config.LowHealthThreshold;
+            _target = normalized;
+            _holdRemaining = config.HealthDamageHold;
+            _pulse = 1f;
+        }
+
+        public void Initialize(float current, float maximum, GameplayFeelConfig config)
+        {
+            if (_immediateFill != null) _immediateFill.color = config.PlayerHealthBarColor;
+            if (_delayedDamageFill != null) _delayedDamageFill.color = config.PlayerDelayedHealthBarColor;
+            var normalized = maximum > 0f ? Mathf.Clamp01(current / maximum) : 0f;
+            if (_immediateFill != null) _immediateFill.fillAmount = normalized;
+            if (_delayedDamageFill != null) _delayedDamageFill.fillAmount = normalized;
+            SetImmediate(current, maximum, config);
+            _holdRemaining = 0f;
+            _pulse = 0f;
+        }
+
+        public void Tick(float deltaTime, GameplayFeelConfig config)
+        {
+            if (_holdRemaining > 0f) _holdRemaining = Mathf.Max(0f, _holdRemaining - deltaTime);
+            else if (_delayedDamageFill != null)
+                _delayedDamageFill.fillAmount = Mathf.MoveTowards(_delayedDamageFill.fillAmount,
+                    _target, deltaTime / config.HealthDelayedDuration);
+            if (_pulse > 0f)
+            {
+                _pulse = Mathf.Max(0f, _pulse - deltaTime * 6f);
+                transform.localScale = Vector3.one * (1f + Mathf.Sin(_pulse * Mathf.PI) * 0.08f);
+            }
+            else transform.localScale = Vector3.one;
+        }
+    }
+}

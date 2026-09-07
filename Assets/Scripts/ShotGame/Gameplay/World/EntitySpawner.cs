@@ -89,7 +89,8 @@ namespace ShotGame.Gameplay.World
             var entity = new GameplayEntity(_idGenerator.Next(), EntityCategory.Projectile,
                 data.SourceTeam, unityObject);
             var spawnData = data;
-            return Register(entity, item => item.AddComponent(new ProjectileComponent(_world, this, spawnData)));
+            return Register(entity, item => item.AddComponent(new ProjectileComponent(
+                _world, this, _facts, spawnData)));
         }
 
         public GameplayEntity SpawnWeapon(GameObject prefab, Vector3 position, Quaternion rotation, EntityTeam team,

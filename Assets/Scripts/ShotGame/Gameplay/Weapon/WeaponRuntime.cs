@@ -81,7 +81,7 @@ namespace ShotGame.Gameplay.Weapon
             MagazineAmmo--;
             State = WeaponState.Cooldown;
             CooldownRemaining = Config.FireInterval;
-            shotPackage = new ShotPackage(sourceId, sourceTeam, origin, direction,
+            shotPackage = new ShotPackage(sourceId, sourceTeam, Config, origin, direction,
                 Config.ProjectilePrefab, Config.ProjectileCount, Config.SpreadAngle,
                 Config.Damage * Mathf.Max(0f, damageMultiplier), Config.ProjectileSpeed,
                 Config.ProjectileLifetime, Config.ProjectileRadius, Config.RecoilImpulse,

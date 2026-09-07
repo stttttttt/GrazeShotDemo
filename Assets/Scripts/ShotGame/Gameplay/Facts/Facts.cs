@@ -42,13 +42,75 @@ namespace ShotGame.Gameplay.Facts
     public readonly struct ShotFiredFact
     {
         public ShotFiredFact(GameEntityId sourceId, Vector2 origin, Vector2 direction,
-            float recoilImpulse, int empowerLevel)
-        { SourceId = sourceId; Origin = origin; Direction = direction; RecoilImpulse = recoilImpulse; EmpowerLevel = empowerLevel; }
+            float recoilImpulse, int empowerLevel, WeaponConfig weaponConfig, EntityTeam sourceTeam)
+        {
+            SourceId = sourceId;
+            Origin = origin;
+            Direction = direction;
+            RecoilImpulse = recoilImpulse;
+            EmpowerLevel = empowerLevel;
+            WeaponConfig = weaponConfig;
+            SourceTeam = sourceTeam;
+        }
         public GameEntityId SourceId { get; }
         public Vector2 Origin { get; }
         public Vector2 Direction { get; }
         public float RecoilImpulse { get; }
         public int EmpowerLevel { get; }
+        public WeaponConfig WeaponConfig { get; }
+        public EntityTeam SourceTeam { get; }
+    }
+
+    public readonly struct ProjectileHitFact
+    {
+        public ProjectileHitFact(GameEntityId projectileId, GameEntityId sourceId, GameEntityId targetId,
+            Vector2 hitPosition, Vector2 hitNormal, Vector2 direction, DamageResult damageResult,
+            int empowerLevel, EntityTeam sourceTeam)
+        {
+            ProjectileId = projectileId;
+            SourceId = sourceId;
+            TargetId = targetId;
+            HitPosition = hitPosition;
+            HitNormal = hitNormal;
+            Direction = direction;
+            DamageResult = damageResult;
+            EmpowerLevel = empowerLevel;
+            SourceTeam = sourceTeam;
+        }
+
+        public GameEntityId ProjectileId { get; }
+        public GameEntityId SourceId { get; }
+        public GameEntityId TargetId { get; }
+        public Vector2 HitPosition { get; }
+        public Vector2 HitNormal { get; }
+        public Vector2 Direction { get; }
+        public DamageResult DamageResult { get; }
+        public int EmpowerLevel { get; }
+        public EntityTeam SourceTeam { get; }
+    }
+
+    public readonly struct ProjectileWallHitFact
+    {
+        public ProjectileWallHitFact(GameEntityId projectileId, GameEntityId sourceId,
+            Vector2 hitPosition, Vector2 hitNormal, Vector2 direction, int empowerLevel,
+            EntityTeam sourceTeam)
+        {
+            ProjectileId = projectileId;
+            SourceId = sourceId;
+            HitPosition = hitPosition;
+            HitNormal = hitNormal;
+            Direction = direction;
+            EmpowerLevel = empowerLevel;
+            SourceTeam = sourceTeam;
+        }
+
+        public GameEntityId ProjectileId { get; }
+        public GameEntityId SourceId { get; }
+        public Vector2 HitPosition { get; }
+        public Vector2 HitNormal { get; }
+        public Vector2 Direction { get; }
+        public int EmpowerLevel { get; }
+        public EntityTeam SourceTeam { get; }
     }
 
     public readonly struct GrazePhaseChangedFact

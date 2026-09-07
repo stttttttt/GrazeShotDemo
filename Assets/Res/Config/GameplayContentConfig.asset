@@ -37,3 +37,4 @@ MonoBehaviour:
     m_Bits: 4096
   _grazeConfig: {fileID: 11400000, guid: 36d11f0f821a48fb81d215584820948f, type: 2}
   _runDefinition: {fileID: 11400000, guid: 67f2765147159aa4da363d08d8b2505b, type: 2}
+  _feelConfig: {fileID: 11400000, guid: 15911992b3f42f44c9997ef2ff296a14, type: 2}

@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7100000000000000000000000000000e, type: 3}
+  m_Name: GameplayFeelConfig
+  m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Config.GameplayFeelConfig
+  _weaponFeedback:
+  - _weapon: {fileID: 11400000, guid: 33c75b84a5114d4d9fd18aae068ca070, type: 2}
+    _fireAudio: {fileID: 0}
+    _muzzleColor: {r: 1, g: 0.82, b: 0.25, a: 1}
+    _muzzleSize: 0.72
+    _cameraKick: 0.16
+    _shakeStrength: 0.1
+    _shakeDuration: 0.12
+    _hitStopDuration: 0.022
+    _hitStopCooldown: 0.08
+  - _weapon: {fileID: 11400000, guid: a29d88edae294176a46f208aee78d690, type: 2}
+    _fireAudio: {fileID: 0}
+    _muzzleColor: {r: 1, g: 0.82, b: 0.25, a: 1}
+    _muzzleSize: 0.42
+    _cameraKick: 0.045
+    _shakeStrength: 0.025
+    _shakeDuration: 0.055
+    _hitStopDuration: 0.006
+    _hitStopCooldown: 0.07
+  - _weapon: {fileID: 11400000, guid: 6cd671a32eb443d59a7a62186ff020b1, type: 2}
+    _fireAudio: {fileID: 0}
+    _muzzleColor: {r: 1, g: 0.3, b: 0.22, a: 1}
+    _muzzleSize: 0.35
+    _cameraKick: 0
+    _shakeStrength: 0
+    _shakeDuration: 0.055
+    _hitStopDuration: 0
+    _hitStopCooldown: 0.07
+  - _weapon: {fileID: 11400000, guid: c6e0d1080f8848b48ba9a0719e28d4d4, type: 2}
+    _fireAudio: {fileID: 0}
+    _muzzleColor: {r: 1, g: 0.3, b: 0.22, a: 1}
+    _muzzleSize: 0.35
+    _cameraKick: 0
+    _shakeStrength: 0
+    _shakeDuration: 0.055
+    _hitStopDuration: 0
+    _hitStopCooldown: 0.07
+  - _weapon: {fileID: 11400000, guid: 59f0b0e022caed64f9960b71e76fe69b, type: 2}
+    _fireAudio: {fileID: 0}
+    _muzzleColor: {r: 1, g: 0.3, b: 0.22, a: 1}
+    _muzzleSize: 0.35
+    _cameraKick: 0
+    _shakeStrength: 0
+    _shakeDuration: 0.055
+    _hitStopDuration: 0
+    _hitStopCooldown: 0.07
+  _worldEffectPrefab: {fileID: 5797359987145329634, guid: 5ee91b7434d14924f9070835df2d1ba4, type: 3}
+  _hitFlashColor: {r: 1, g: 1, b: 1, a: 1}
+  _playerDamageColor: {r: 1, g: 0.2, b: 0.2, a: 1}
+  _enemyDamageNumberColor: {r: 1, g: 0.88, b: 0.3, a: 1}
+  _empoweredDamageNumberColor: {r: 0.3, g: 1, b: 1, a: 1}
+  _lethalDamageNumberColor: {r: 1, g: 0.35, b: 0.2, a: 1}
+  _flashDuration: 0.055
+  _damageNumberDuration: 0.6
+  _damageNumberLimit: 24
+  _worldHealthBarLimit: 12
+  _lowHealthThreshold: 0.3
+  _healthImmediateDuration: 0.08
+  _healthDamageHold: 0.22
+  _healthDelayedDuration: 0.32
+  _damageShakeStrength: 0.13
+  _damageShakeDuration: 0.16
+  _deathShakeStrength: 0.18
+  _deathShakeDuration: 0.2
+  _maxShakeOffset: 0.22
+  _maxCameraKick: 0.18
+  _cameraRecovery: 12
+  _hitAudio: {fileID: 0}
+  _wallHitAudio: {fileID: 0}
+  _playerDamageAudio: {fileID: 0}
+  _deathAudio: {fileID: 0}
+  _grazeAudio: {fileID: 0}
+  _perfectGrazeAudio: {fileID: 0}

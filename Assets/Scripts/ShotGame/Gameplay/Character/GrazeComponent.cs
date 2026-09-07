@@ -42,6 +42,29 @@ namespace ShotGame.Gameplay.Character
 
         public GrazePhase Phase { get; private set; } = GrazePhase.Idle;
         public bool IsEffectiveWindow => Phase == GrazePhase.Perfect || Phase == GrazePhase.Active;
+        public float NormalizedPhaseProgress
+        {
+            get
+            {
+                switch (Phase)
+                {
+                    case GrazePhase.Startup:
+                        return Normalize(_totalElapsed, 0f, _config.StartupDuration);
+                    case GrazePhase.Perfect:
+                        return Normalize(_totalElapsed, _config.StartupDuration, _config.PerfectDuration);
+                    case GrazePhase.Active:
+                        return Normalize(_totalElapsed, _config.StartupDuration + _config.PerfectDuration,
+                            _config.ActiveDuration);
+                    case GrazePhase.Cooldown:
+                        return Normalize(_totalElapsed,
+                            _config.StartupDuration + _config.PerfectDuration + _config.ActiveDuration,
+                            _config.TotalCooldown - _config.StartupDuration - _config.PerfectDuration -
+                            _config.ActiveDuration);
+                    default:
+                        return 0f;
+                }
+            }
+        }
 
         public void ApplyIntent(bool pressed)
         {
@@ -146,6 +169,9 @@ namespace ShotGame.Gameplay.Character
                 return GrazePhase.Active;
             return elapsed < _config.TotalCooldown ? GrazePhase.Cooldown : GrazePhase.Idle;
         }
+
+        private static float Normalize(float elapsed, float start, float duration) =>
+            duration > 0f ? Mathf.Clamp01((elapsed - start) / duration) : 1f;
 
         private bool IsEnemyProjectile(ShotGame.Gameplay.Entity.Entity entity)
         {

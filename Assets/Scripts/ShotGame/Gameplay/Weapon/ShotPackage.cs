@@ -7,13 +7,15 @@ namespace ShotGame.Gameplay.Weapon
     /// <summary>一次有效扳机行为的不可变结算数据；一组散弹也只对应一个包。</summary>
     public readonly struct ShotPackage
     {
-        public ShotPackage(GameEntityId sourceId, EntityTeam sourceTeam, Vector2 origin, Vector2 direction,
+        public ShotPackage(GameEntityId sourceId, EntityTeam sourceTeam, WeaponConfig weaponConfig,
+            Vector2 origin, Vector2 direction,
             GameObject projectilePrefab, int projectileCount, float spreadAngle, float damage,
             float projectileSpeed, float projectileLifetime, float projectileRadius, float recoilImpulse,
             LayerMask targetMask, LayerMask wallMask, int empowerLevel = 0, int remainingPenetrations = 0)
         {
             SourceId = sourceId;
             SourceTeam = sourceTeam;
+            WeaponConfig = weaponConfig;
             Origin = origin;
             Direction = direction.normalized;
             ProjectilePrefab = projectilePrefab;
@@ -32,6 +34,7 @@ namespace ShotGame.Gameplay.Weapon
 
         public GameEntityId SourceId { get; }
         public EntityTeam SourceTeam { get; }
+        public WeaponConfig WeaponConfig { get; }
         public Vector2 Origin { get; }
         public Vector2 Direction { get; }
         public GameObject ProjectilePrefab { get; }
@@ -49,7 +52,7 @@ namespace ShotGame.Gameplay.Weapon
 
         public ShotPackage WithEmpowerment(int level, float damageMultiplier,
             float radiusMultiplier, int penetrations) =>
-            new ShotPackage(SourceId, SourceTeam, Origin, Direction, ProjectilePrefab,
+            new ShotPackage(SourceId, SourceTeam, WeaponConfig, Origin, Direction, ProjectilePrefab,
                 ProjectileCount, SpreadAngle, Damage * Mathf.Max(0f, damageMultiplier),
                 ProjectileSpeed, ProjectileLifetime, ProjectileRadius * Mathf.Max(0.01f, radiusMultiplier),
                 RecoilImpulse, TargetMask, WallMask, Mathf.Max(0, level), Mathf.Max(0, penetrations));

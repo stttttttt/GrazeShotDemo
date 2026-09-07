@@ -22,8 +22,10 @@ namespace ShotGame.Gameplay.Time
         }
 
         public bool IsActive => RemainingDuration > 0f;
+        public bool IsHitStopped => HitStopRemaining > 0f;
         public float CurrentScale { get; private set; } = 1f;
         public float RemainingDuration { get; private set; }
+        public float HitStopRemaining { get; private set; }
         public float PlayerMotionScale => IsActive
             ? Mathf.Max(CurrentScale, _config.PlayerMotionScaleDuringSlowTime)
             : 1f;
@@ -36,13 +38,28 @@ namespace ShotGame.Gameplay.Time
             CurrentScale = IsActive ? Mathf.Min(CurrentScale, requestedScale) : requestedScale;
             RemainingDuration = Mathf.Min(_config.MaxAccumulatedDuration,
                 RemainingDuration + requestedDuration);
-            _time.SetTimeScale(CurrentScale);
+            ApplyScale();
             Publish();
+        }
+
+        public void RequestHitStop(float duration)
+        {
+            ThrowIfDisposed();
+            if (duration <= 0f) return;
+            HitStopRemaining = Mathf.Max(HitStopRemaining, duration);
+            ApplyScale();
         }
 
         public void Tick(float unscaledDeltaTime)
         {
-            if (_disposed || !IsActive || unscaledDeltaTime <= 0f) return;
+            if (_disposed || unscaledDeltaTime <= 0f) return;
+            if (IsHitStopped)
+            {
+                HitStopRemaining = Mathf.Max(0f, HitStopRemaining - unscaledDeltaTime);
+                ApplyScale();
+                return;
+            }
+            if (!IsActive) return;
             RemainingDuration = Mathf.Max(0f, RemainingDuration - unscaledDeltaTime);
             if (RemainingDuration <= 0f) Clear();
             else Publish();
@@ -53,8 +70,9 @@ namespace ShotGame.Gameplay.Time
             if (_disposed) return;
             var changed = IsActive || CurrentScale != 1f;
             RemainingDuration = 0f;
+            HitStopRemaining = 0f;
             CurrentScale = 1f;
-            _time.SetTimeScale(1f);
+            ApplyScale();
             if (changed) Publish();
         }
 
@@ -67,6 +85,8 @@ namespace ShotGame.Gameplay.Time
 
         private void Publish() => _facts.Publish(new TimeDilationChangedFact(
             CurrentScale, RemainingDuration, IsActive));
+
+        private void ApplyScale() => _time.SetTimeScale(IsHitStopped ? 0f : CurrentScale);
 
         private void ThrowIfDisposed()
         {

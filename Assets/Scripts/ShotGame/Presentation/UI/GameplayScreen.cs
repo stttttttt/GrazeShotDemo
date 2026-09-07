@@ -21,6 +21,13 @@ namespace ShotGame.Presentation.UI
         [SerializeField] private Text _waveText;
         [SerializeField] private Text _objectiveText;
 
+        [Header("第七阶段正式 HUD")]
+        [SerializeField] private PlayerHealthView _playerHealthView;
+        [SerializeField] private GrazeIndicatorView _grazeIndicatorView;
+        [SerializeField] private RectTransform _worldUiRoot;
+        [SerializeField] private DamageNumberView _damageNumberPrefab;
+        [SerializeField] private WorldHealthBarView _worldHealthBarPrefab;
+
         private GameplaySession _session;
         private IDisposable _weaponSubscription;
         private IDisposable _damageSubscription;
@@ -36,8 +43,16 @@ namespace ShotGame.Presentation.UI
         private SpriteRenderer _playerRenderer;
         private Color _playerDefaultColor;
 
+        public static GameplayScreen ActiveInstance { get; private set; }
+        public PlayerHealthView PlayerHealthView => _playerHealthView;
+        public GrazeIndicatorView GrazeIndicatorView => _grazeIndicatorView;
+        public RectTransform WorldUiRoot => _worldUiRoot;
+        public DamageNumberView DamageNumberPrefab => _damageNumberPrefab;
+        public WorldHealthBarView WorldHealthBarPrefab => _worldHealthBarPrefab;
+
         protected override void OnOpened(object args)
         {
+            ActiveInstance = this;
             _session = args as GameplaySession
                 ?? throw new ArgumentException("GameplayScreen 需要 GameplaySession。", nameof(args));
             EnsureFifthPhaseLabels();
@@ -61,6 +76,7 @@ namespace ShotGame.Presentation.UI
 
         protected override void OnClosing()
         {
+            if (ActiveInstance == this) ActiveInstance = null;
             _weaponSubscription?.Dispose();
             _weaponSubscription = null;
             _damageSubscription?.Dispose();

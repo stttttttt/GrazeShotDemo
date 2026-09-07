@@ -43,7 +43,8 @@ namespace ShotGame.Gameplay.Weapon
             if (package.RecoilImpulse > 0f)
                 _movement.AddImpulse(-package.Direction * package.RecoilImpulse);
             _facts.Publish(new ShotFiredFact(package.SourceId, package.Origin,
-                package.Direction, package.RecoilImpulse, package.EmpowerLevel));
+                package.Direction, package.RecoilImpulse, package.EmpowerLevel,
+                package.WeaponConfig, package.SourceTeam));
             return true;
         }
 
