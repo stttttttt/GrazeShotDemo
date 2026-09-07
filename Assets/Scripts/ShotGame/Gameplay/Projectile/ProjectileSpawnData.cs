@@ -8,7 +8,8 @@ namespace ShotGame.Gameplay.Projectile
     {
         public ProjectileSpawnData(GameObject prefab, Vector2 position, Vector2 direction,
             GameEntityId sourceId, EntityTeam sourceTeam, float damage, float speed, float lifetime,
-            float radius, LayerMask targetMask, LayerMask wallMask, Transform parent)
+            float radius, LayerMask targetMask, LayerMask wallMask, Transform parent,
+            int empowerLevel = 0, int remainingPenetrations = 0)
         {
             Prefab = prefab;
             Position = position;
@@ -22,6 +23,8 @@ namespace ShotGame.Gameplay.Projectile
             TargetMask = targetMask;
             WallMask = wallMask;
             Parent = parent;
+            EmpowerLevel = empowerLevel;
+            RemainingPenetrations = remainingPenetrations;
         }
 
         public GameObject Prefab { get; }
@@ -36,5 +39,7 @@ namespace ShotGame.Gameplay.Projectile
         public LayerMask TargetMask { get; }
         public LayerMask WallMask { get; }
         public Transform Parent { get; }
+        public int EmpowerLevel { get; }
+        public int RemainingPenetrations { get; }
     }
 }

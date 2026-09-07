@@ -8,6 +8,7 @@ using ShotGame.Gameplay.Facts;
 using ShotGame.Gameplay.Intent;
 using ShotGame.Gameplay.Scene;
 using ShotGame.Gameplay.World;
+using ShotGame.Gameplay.Time;
 
 namespace ShotGame.Gameplay.Run
 {
@@ -30,6 +31,8 @@ namespace ShotGame.Gameplay.Run
         public GameplayRun Run { get; private set; }
         public GameplaySceneContext SceneContext { get; private set; }
         public EntityId PlayerEntityId { get; private set; }
+        public TimeDilationController TimeDilation { get; private set; }
+        public WavePlan WavePlan { get; private set; }
 
         public Task InitializeAsync(GameplaySceneContext sceneContext, GameplayContentConfig contentConfig,
             GameplayInputAdapter input)
@@ -48,7 +51,8 @@ namespace ShotGame.Gameplay.Run
                 Facts = new GameplayFactHub();
                 World = new GameplayWorld(Facts);
                 Spawner = new EntitySpawner(World, Facts, new EntityIdGenerator());
-                Run = new GameplayRun(World, Facts, _time);
+                TimeDilation = new TimeDilationController(_time, contentConfig.GrazeConfig, Facts);
+                WavePlan = WavePlanBuilder.Build(contentConfig.RunDefinition, SceneContext.EnemySpawnPoints);
 
                 for (var i = 0; i < SceneContext.SceneEntities.Count; i++)
                     Spawner.RegisterSceneEntity(SceneContext.SceneEntities[i]);
@@ -56,23 +60,18 @@ namespace ShotGame.Gameplay.Run
                 var player = Spawner.SpawnPlayer(contentConfig.PlayerPrefab,
                     SceneContext.PlayerSpawn.position, SceneContext.PlayerSpawn.rotation,
                     contentConfig.PlayerInitialWeapons, contentConfig.PlayerTargetMask, contentConfig.WallMask,
+                    contentConfig.GrazeProjectileMask,
                     contentConfig.PlayerMaxRecoilSpeed, contentConfig.PlayerRecoilRecovery,
+                    contentConfig.GrazeConfig, TimeDilation, SceneContext.MovementBounds,
                     SceneContext.WorldRoot);
                 PlayerEntityId = player.Id;
                 _input.Bind(player.GetComponent<PlayerInputComponent>(), player.UnityObject.Transform,
                     SceneContext.GameplayCamera);
 
-                if (contentConfig.SpawnTestEnemy)
-                {
-                    var count = Math.Min(contentConfig.TestEnemyCount, SceneContext.EnemySpawns.Count);
-                    for (var i = 0; i < count; i++)
-                    {
-                        var spawn = SceneContext.EnemySpawns[i];
-                        Spawner.SpawnEnemy(contentConfig.TestEnemyPrefab, spawn.position, spawn.rotation,
-                            PlayerEntityId, contentConfig.TestEnemyWeapon, contentConfig.EnemyTargetMask,
-                            contentConfig.WallMask, contentConfig.TestEnemyAttackRange, SceneContext.WorldRoot);
-                    }
-                }
+                var waveController = new WaveController(Spawner, SceneContext, Facts, PlayerEntityId,
+                    contentConfig.EnemyTargetMask, contentConfig.WallMask);
+                Run = new GameplayRun(World, Facts, _time, WavePlan, waveController,
+                    TimeDilation, PlayerEntityId);
 
                 Run.Start();
                 IsInitialized = true;
@@ -91,6 +90,8 @@ namespace ShotGame.Gameplay.Run
             if (!IsInitialized || _time.IsPaused) 
                 return;
 
+            TimeDilation.Tick(_time.UnscaledDeltaTime);
+            World.UnscaledTick(_time.UnscaledDeltaTime);
             Run.Tick(_time.DeltaTime);
             World.Tick(_time.DeltaTime);
         }
@@ -118,6 +119,8 @@ namespace ShotGame.Gameplay.Run
             _input = null;
             Run?.Dispose();
             Run = null;
+            TimeDilation?.Dispose();
+            TimeDilation = null;
             Spawner?.Dispose();
             Spawner = null;
             World?.Dispose();
@@ -125,6 +128,7 @@ namespace ShotGame.Gameplay.Run
             Facts?.Dispose();
             Facts = null;
             SceneContext = null;
+            WavePlan = null;
             PlayerEntityId = default;
         }
 

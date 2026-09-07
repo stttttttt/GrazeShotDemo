@@ -228,7 +228,8 @@ MonoBehaviour:
   m_RequiresDepthTextureOption: 2
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 0
-  m_Cameras: []
+  m_Cameras:
+  - {fileID: 924948804}
   m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2
@@ -480,6 +481,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!20 &924948804 stripped
+Camera:
+  m_CorrespondingSourceObject: {fileID: 7673819987542550414, guid: 78e49054d5050734d92cb078913f3159, type: 3}
+  m_PrefabInstance: {fileID: 1729520812}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1729520812
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -490,7 +496,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: _pages.Array.size
-      value: 3
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: _pages.Array.data[1]._pageId._value
@@ -501,12 +507,20 @@ PrefabInstance:
       value: Pause
       objectReference: {fileID: 0}
     - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
+      propertyPath: _pages.Array.data[3]._pageId._value
+      value: GameplayResult
+      objectReference: {fileID: 0}
+    - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: _pages.Array.data[1]._resourceId._value
       value: UI_Gameplay
       objectReference: {fileID: 0}
     - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: _pages.Array.data[2]._resourceId._value
       value: UI_Pause
+      objectReference: {fileID: 0}
+    - target: {fileID: 4980421131122762453, guid: 78e49054d5050734d92cb078913f3159, type: 3}
+      propertyPath: _pages.Array.data[3]._resourceId._value
+      value: UI_GameplayResult
       objectReference: {fileID: 0}
     - target: {fileID: 5141935736063251903, guid: 78e49054d5050734d92cb078913f3159, type: 3}
       propertyPath: m_Pivot.x

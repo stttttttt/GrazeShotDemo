@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d467e61c56874d49b88369fb380dc90c, type: 3}
+  m_Name: EliteEnemy
+  m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Config.EnemyConfig
+  _enemyId: EliteEnemy
+  _displayName: "\u7CBE\u82F1\u654C\u4EBA"
+  _prefab: {fileID: 6369848336450431915, guid: 075e1aeea4779504d81e63a824fdfd81, type: 3}
+  _weapon: {fileID: 11400000, guid: 59f0b0e022caed64f9960b71e76fe69b, type: 2}
+  _maxHealth: 120
+  _moveSpeed: 1.6
+  _attackRange: 7
+  _initialAttackDelay: 1.2
+  _budgetCost: 3

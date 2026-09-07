@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Config.GameplayContentConfig
   _playerPrefab: {fileID: 5127721093903002769, guid: e9da7f299e418674abc5f8eef25549e6, type: 3}
   _testEnemyPrefab: {fileID: 5987152849956558724, guid: 05f75d85c55658d43b2cadfc7ca76781, type: 3}
-  _spawnTestEnemy: 1
-  _testEnemyCount: 1
+  _spawnTestEnemy: 0
+  _testEnemyCount: 0
   _testEnemyAttackRange: 5
   _playerInitialWeapons:
   - {fileID: 11400000, guid: 33c75b84a5114d4d9fd18aae068ca070, type: 2}
@@ -35,3 +35,5 @@ MonoBehaviour:
   _wallMask:
     serializedVersion: 2
     m_Bits: 4096
+  _grazeConfig: {fileID: 11400000, guid: 36d11f0f821a48fb81d215584820948f, type: 2}
+  _runDefinition: {fileID: 11400000, guid: 67f2765147159aa4da363d08d8b2505b, type: 2}

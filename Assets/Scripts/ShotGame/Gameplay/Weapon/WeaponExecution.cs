@@ -26,7 +26,7 @@ namespace ShotGame.Gameplay.Weapon
                 : throw new ArgumentNullException(nameof(projectileRoot));
         }
 
-        public void Execute(in ShotPackage package)
+        public bool Execute(in ShotPackage package)
         {
             for (var i = 0; i < package.ProjectileCount; i++)
             {
@@ -35,14 +35,16 @@ namespace ShotGame.Gameplay.Weapon
                 var data = new ProjectileSpawnData(package.ProjectilePrefab, package.Origin, direction,
                     package.SourceId, package.SourceTeam, package.Damage, package.ProjectileSpeed,
                     package.ProjectileLifetime, package.ProjectileRadius, package.TargetMask,
-                    package.WallMask, _projectileRoot);
+                    package.WallMask, _projectileRoot, package.EmpowerLevel,
+                    package.RemainingPenetrations);
                 _spawner.SpawnProjectile(data);
             }
 
             if (package.RecoilImpulse > 0f)
                 _movement.AddImpulse(-package.Direction * package.RecoilImpulse);
             _facts.Publish(new ShotFiredFact(package.SourceId, package.Origin,
-                package.Direction, package.RecoilImpulse));
+                package.Direction, package.RecoilImpulse, package.EmpowerLevel));
+            return true;
         }
 
         private static float GetSpreadAngle(int index, int count, float totalAngle)

@@ -31,6 +31,12 @@ namespace ShotGame.Gameplay.Config
         [SerializeField] private LayerMask _grazeProjectileMask;
         [SerializeField] private LayerMask _wallMask;
 
+        [Header("第五阶段主动擦弹")]
+        [SerializeField] private GrazeConfig _grazeConfig;
+
+        [Header("第六阶段正式单局")]
+        [SerializeField] private RunDefinition _runDefinition;
+
         public GameObject PlayerPrefab => _playerPrefab;
         public GameObject TestEnemyPrefab => _testEnemyPrefab;
         public bool SpawnTestEnemy => _spawnTestEnemy;
@@ -44,6 +50,8 @@ namespace ShotGame.Gameplay.Config
         public LayerMask EnemyTargetMask => _enemyTargetMask;
         public LayerMask GrazeProjectileMask => _grazeProjectileMask;
         public LayerMask WallMask => _wallMask;
+        public GrazeConfig GrazeConfig => _grazeConfig;
+        public RunDefinition RunDefinition => _runDefinition;
 
         public void Validate()
         {
@@ -67,6 +75,10 @@ namespace ShotGame.Gameplay.Config
             }
             if (_playerMaxRecoilSpeed <= 0f || _playerRecoilRecovery <= 0f)
                 throw new InvalidOperationException("玩家后坐最大速度和恢复速度必须大于 0。");
+            if (_grazeConfig == null) throw new InvalidOperationException("GameplayContentConfig 缺少 GrazeConfig。");
+            _grazeConfig.Validate();
+            if (_runDefinition == null) throw new InvalidOperationException("GameplayContentConfig 缺少 RunDefinition。");
+            _runDefinition.Validate();
         }
     }
 }

@@ -10,7 +10,7 @@ namespace ShotGame.Gameplay.Weapon
         public ShotPackage(GameEntityId sourceId, EntityTeam sourceTeam, Vector2 origin, Vector2 direction,
             GameObject projectilePrefab, int projectileCount, float spreadAngle, float damage,
             float projectileSpeed, float projectileLifetime, float projectileRadius, float recoilImpulse,
-            LayerMask targetMask, LayerMask wallMask)
+            LayerMask targetMask, LayerMask wallMask, int empowerLevel = 0, int remainingPenetrations = 0)
         {
             SourceId = sourceId;
             SourceTeam = sourceTeam;
@@ -26,6 +26,8 @@ namespace ShotGame.Gameplay.Weapon
             RecoilImpulse = recoilImpulse;
             TargetMask = targetMask;
             WallMask = wallMask;
+            EmpowerLevel = empowerLevel;
+            RemainingPenetrations = remainingPenetrations;
         }
 
         public GameEntityId SourceId { get; }
@@ -42,5 +44,14 @@ namespace ShotGame.Gameplay.Weapon
         public float RecoilImpulse { get; }
         public LayerMask TargetMask { get; }
         public LayerMask WallMask { get; }
+        public int EmpowerLevel { get; }
+        public int RemainingPenetrations { get; }
+
+        public ShotPackage WithEmpowerment(int level, float damageMultiplier,
+            float radiusMultiplier, int penetrations) =>
+            new ShotPackage(SourceId, SourceTeam, Origin, Direction, ProjectilePrefab,
+                ProjectileCount, SpreadAngle, Damage * Mathf.Max(0f, damageMultiplier),
+                ProjectileSpeed, ProjectileLifetime, ProjectileRadius * Mathf.Max(0.01f, radiusMultiplier),
+                RecoilImpulse, TargetMask, WallMask, Mathf.Max(0, level), Mathf.Max(0, penetrations));
     }
 }

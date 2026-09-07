@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e72aaf7ed1fb489cbb6d5427daeb18e4, type: 3}
+  m_Name: DemoRun
+  m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Config.RunDefinition
+  _runId: demo_run
+  _initialCountdown: 2
+  _defaultWaveInterval: 3
+  _fixedSeed: 20260903
+  _waves:
+  - {fileID: 11400000, guid: ca2517c6b6f6b9a43a6f9f4b3c5de869, type: 2}
+  - {fileID: 11400000, guid: 8d8f049ee14d90d428fa08c2b14deba3, type: 2}
+  - {fileID: 11400000, guid: 6502fea3278e82841be99d0a71df9599, type: 2}
+  - {fileID: 11400000, guid: c50d82185ee748e4cbbc040ef2aaced4, type: 2}
+  - {fileID: 11400000, guid: 7611bab5e79cacd428c1a46e395b192d, type: 2}

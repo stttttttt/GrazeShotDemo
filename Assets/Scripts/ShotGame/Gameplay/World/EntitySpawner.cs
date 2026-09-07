@@ -7,6 +7,8 @@ using ShotGame.Gameplay.Intent;
 using ShotGame.Gameplay.Projectile;
 using ShotGame.Gameplay.Scene;
 using ShotGame.Gameplay.Weapon;
+using ShotGame.Gameplay.Config;
+using ShotGame.Gameplay.Time;
 using UnityEngine;
 using GameplayEntity = ShotGame.Gameplay.Entity.Entity;
 using GameEntityId = ShotGame.Gameplay.Entity.EntityId;
@@ -30,7 +32,9 @@ namespace ShotGame.Gameplay.World
 
         public CharacterEntity SpawnPlayer(GameObject prefab, Vector3 position, Quaternion rotation,
             IReadOnlyList<WeaponConfig> weapons, LayerMask targetMask, LayerMask wallMask,
-            float maxRecoilSpeed, float recoilRecovery, Transform parent = null)
+            LayerMask grazeProjectileMask, float maxRecoilSpeed, float recoilRecovery,
+            GrazeConfig grazeConfig, TimeDilationController timeDilation, Bounds movementBounds,
+            Transform parent = null)
         {
             return SpawnCharacter(prefab, position, rotation, parent, EntityCategory.Player, EntityTeam.Player,
                 character =>
@@ -38,27 +42,33 @@ namespace ShotGame.Gameplay.World
                     var attributes = character.AddComponent(new AttributeComponent());
                     character.AddComponent(new PlayerInputComponent());
                     var movement = character.AddComponent(new MovementComponent(attributes,
-                        maxRecoilSpeed, recoilRecovery));
+                        maxRecoilSpeed, recoilRecovery, timeDilation, movementBounds));
                     var equipment = character.AddComponent(new EquipmentComponent(weapons));
+                    var charge = character.AddComponent(new ChargeComponent(grazeConfig, _facts));
                     var execution = new WeaponExecution(this, movement, _facts, parent);
                     character.AddComponent(new WeaponUseComponent(equipment, attributes, execution,
-                        _facts, targetMask, wallMask));
-                    character.AddComponent(new GrazeComponent());
+                        _facts, targetMask, wallMask, charge));
+                    character.AddComponent(new GrazeComponent(_world, movement, charge, timeDilation,
+                        _facts, grazeConfig, grazeProjectileMask));
                     character.AddComponent(new GameplayCharacterController());
                 });
         }
 
-        public CharacterEntity SpawnEnemy(GameObject prefab, Vector3 position, Quaternion rotation,
-            GameEntityId targetId, WeaponConfig weapon, LayerMask targetMask, LayerMask wallMask,
-            float attackRange = 5f, Transform parent = null)
+        public CharacterEntity SpawnEnemy(EnemyConfig config, Vector3 position, Quaternion rotation,
+            GameEntityId targetId, LayerMask targetMask, LayerMask wallMask, Bounds movementBounds,
+            Transform parent = null)
         {
-            return SpawnCharacter(prefab, position, rotation, parent, EntityCategory.Enemy, EntityTeam.Enemy,
+            if (config == null) throw new ArgumentNullException(nameof(config));
+            config.Validate();
+            return SpawnCharacter(config.Prefab, position, rotation, parent, EntityCategory.Enemy, EntityTeam.Enemy,
                 character =>
                 {
-                    var attributes = character.AddComponent(new AttributeComponent());
-                    character.AddComponent(new AIComponent(_world, targetId, attackRange));
-                    var movement = character.AddComponent(new MovementComponent(attributes));
-                    var equipment = character.AddComponent(new EquipmentComponent(new[] { weapon }));
+                    var attributes = character.AddComponent(new AttributeComponent(config.MaxHealth, config.MoveSpeed));
+                    character.AddComponent(new AIComponent(_world, targetId, config.AttackRange,
+                        config.InitialAttackDelay));
+                    var movement = character.AddComponent(new MovementComponent(attributes,
+                        movementBounds: movementBounds));
+                    var equipment = character.AddComponent(new EquipmentComponent(new[] { config.Weapon }));
                     var execution = new WeaponExecution(this, movement, _facts, parent);
                     character.AddComponent(new WeaponUseComponent(equipment, attributes, execution,
                         _facts, targetMask, wallMask));

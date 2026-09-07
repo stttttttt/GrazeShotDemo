@@ -16,11 +16,13 @@ namespace ShotGame.Gameplay.Character
         private readonly GameplayFactHub _facts;
         private readonly LayerMask _targetMask;
         private readonly LayerMask _wallMask;
+        private readonly ChargeComponent _charge;
         private WeaponRuntime _lastCurrentWeapon;
         private Vector2 _aimDirection = Vector2.right;
 
         public WeaponUseComponent(EquipmentComponent equipment, AttributeComponent attributes,
-            WeaponExecution execution, GameplayFactHub facts, LayerMask targetMask, LayerMask wallMask)
+            WeaponExecution execution, GameplayFactHub facts, LayerMask targetMask, LayerMask wallMask,
+            ChargeComponent charge = null)
         {
             _equipment = equipment ?? throw new ArgumentNullException(nameof(equipment));
             _attributes = attributes ?? throw new ArgumentNullException(nameof(attributes));
@@ -28,6 +30,7 @@ namespace ShotGame.Gameplay.Character
             _facts = facts ?? throw new ArgumentNullException(nameof(facts));
             _targetMask = targetMask;
             _wallMask = wallMask;
+            _charge = charge;
         }
 
         public bool IsTriggerHeld { get; private set; }
@@ -46,7 +49,8 @@ namespace ShotGame.Gameplay.Character
             for (var i = 0; i < _equipment.Weapons.Count; i++)
             {
                 var weapon = _equipment.Weapons[i];
-                if (weapon.Tick(deltaTime) && weapon == _equipment.CurrentWeapon) PublishCurrentState();
+                if (weapon.Tick(deltaTime) && weapon == _equipment.CurrentWeapon)
+                    PublishCurrentState();
             }
         }
 
@@ -72,7 +76,9 @@ namespace ShotGame.Gameplay.Character
                     Owner.UnityObject.Transform.position, _aimDirection, damageMultiplier,
                     _targetMask, _wallMask, out var package))
             {
-                _execution.Execute(package);
+                var usedLevel = 0;
+                if (_charge != null) package = _charge.CreateEmpoweredPackage(package, out usedLevel);
+                if (_execution.Execute(package)) _charge?.Consume(usedLevel);
             }
 
             if (beforeState != weapon.State || beforeMagazine != weapon.MagazineAmmo ||

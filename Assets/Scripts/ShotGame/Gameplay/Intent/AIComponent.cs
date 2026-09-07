@@ -11,13 +11,16 @@ namespace ShotGame.Gameplay.Intent
     {
         private readonly GameplayWorld _world;
         private readonly float _attackRange;
+        private float _attackDelayRemaining;
         private PawnIntent _intent;
 
-        public AIComponent(GameplayWorld world, GameEntityId targetId, float attackRange = 5f)
+        public AIComponent(GameplayWorld world, GameEntityId targetId, float attackRange = 5f,
+            float initialAttackDelay = 0f)
         {
             _world = world ?? throw new ArgumentNullException(nameof(world));
             TargetId = targetId;
             _attackRange = Mathf.Max(0.1f, attackRange);
+            _attackDelayRemaining = Mathf.Max(0f, initialAttackDelay);
         }
 
         public GameEntityId TargetId { get; private set; }
@@ -28,6 +31,7 @@ namespace ShotGame.Gameplay.Intent
         public void Tick(float deltaTime)
         {
             if (State == AIState.Dead) return;
+            _attackDelayRemaining = Mathf.Max(0f, _attackDelayRemaining - Mathf.Max(0f, deltaTime));
             if (!_world.TryGetEntity(TargetId, out var target) || !target.IsAlive)
             {
                 ClearContinuousIntent();
@@ -41,7 +45,7 @@ namespace ShotGame.Gameplay.Intent
             State = inAttackRange ? AIState.Attack : AIState.Chase;
             _intent.AimDirection = direction;
             _intent.MoveDirection = inAttackRange ? Vector2.zero : direction;
-            SetFire(inAttackRange);
+            SetFire(inAttackRange && _attackDelayRemaining <= 0f);
         }
 
         public PawnIntent GetIntent() => _intent;

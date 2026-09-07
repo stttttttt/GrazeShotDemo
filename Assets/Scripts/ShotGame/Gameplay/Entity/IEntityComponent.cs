@@ -18,6 +18,12 @@ namespace ShotGame.Gameplay.Entity
         void FixedTick(float fixedDeltaTime);
     }
 
+    /// <summary>只用于不应被子弹时间拉长的局内计时。</summary>
+    public interface IEntityUnscaledTickable
+    {
+        void UnscaledTick(float unscaledDeltaTime);
+    }
+
     public abstract class EntityComponent : IEntityComponent
     {
         public Entity Owner { get; private set; }

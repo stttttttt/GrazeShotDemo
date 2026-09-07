@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ShotGame.Gameplay.Combat;
 using ShotGame.Gameplay.Entity;
 using ShotGame.Gameplay.World;
@@ -17,6 +18,8 @@ namespace ShotGame.Gameplay.Projectile
         private readonly float _radius;
         private readonly DamagePayload _damage;
         private readonly LayerMask _queryMask;
+        private readonly HashSet<GameEntityId> _hitEntityIds = new HashSet<GameEntityId>();
+        private int _remainingPenetrations;
         private float _lifetimeRemaining;
         private bool _despawnRequested;
 
@@ -32,12 +35,15 @@ namespace ShotGame.Gameplay.Projectile
             _radius = data.Radius;
             _damage = new DamagePayload(data.Damage);
             _queryMask = data.TargetMask | data.WallMask;
+            EmpowerLevel = data.EmpowerLevel;
+            _remainingPenetrations = Mathf.Max(0, data.RemainingPenetrations);
         }
 
         public GameEntityId SourceId { get; }
         public EntityTeam SourceTeam { get; }
         public GameEntityId OwnerId => SourceId;
         public EntityTeam Team => SourceTeam;
+        public int EmpowerLevel { get; }
 
         public DamagePayload CreateDamagePayload() => _damage;
 
@@ -59,20 +65,46 @@ namespace ShotGame.Gameplay.Projectile
         {
             if (_despawnRequested || fixedDeltaTime <= 0f) return;
             var start = (Vector2)Owner.UnityObject.Transform.position;
-            var distance = _speed * fixedDeltaTime;
-            if (TryFindNearestHit(start, distance, out var target))
+            var remainingDistance = _speed * fixedDeltaTime;
+            const float safeOffset = 0.01f;
+            const int maxHitsPerTick = 8;
+
+            for (var hitIndex = 0; hitIndex < maxHitsPerTick && remainingDistance > 0f; hitIndex++)
             {
+                if (!TryFindNearestHit(start, remainingDistance, out var target, out var hitDistance))
+                {
+                    Owner.UnityObject.Transform.position = start + _direction * remainingDistance;
+                    return;
+                }
+
+                if (target.Category == EntityCategory.Wall)
+                {
+                    Owner.UnityObject.Transform.position = start + _direction * Mathf.Max(0f, hitDistance);
+                    RequestDespawn();
+                    return;
+                }
+
                 ResolveHit(target);
-                RequestDespawn();
-                return;
+                if (_remainingPenetrations <= 0)
+                {
+                    RequestDespawn();
+                    return;
+                }
+
+                _remainingPenetrations--;
+                var advance = Mathf.Min(remainingDistance, Mathf.Max(0f, hitDistance) + safeOffset);
+                start += _direction * advance;
+                remainingDistance -= advance;
             }
 
-            Owner.UnityObject.Transform.position = start + _direction * distance;
+            Owner.UnityObject.Transform.position = start + _direction * remainingDistance;
         }
 
-        private bool TryFindNearestHit(Vector2 start, float distance, out ShotGame.Gameplay.Entity.Entity target)
+        private bool TryFindNearestHit(Vector2 start, float distance,
+            out ShotGame.Gameplay.Entity.Entity target, out float hitDistance)
         {
             target = null;
+            hitDistance = 0f;
             var nearestDistance = float.MaxValue;
             var hits = Physics2D.CircleCastAll(start, _radius, _direction, distance, _queryMask);
             for (var i = 0; i < hits.Length; i++)
@@ -82,10 +114,12 @@ namespace ShotGame.Gameplay.Projectile
                 if (!entity.IsAlive || entity.Id == Owner.Id || entity.Id == SourceId) continue;
                 if (SourceTeam != EntityTeam.Neutral && entity.Team == SourceTeam) continue;
                 if (entity.Category != EntityCategory.Wall && !(entity is IDamageable)) continue;
+                if (entity.Category != EntityCategory.Wall && _hitEntityIds.Contains(entity.Id)) continue;
                 if (hits[i].distance >= nearestDistance) continue;
                 nearestDistance = hits[i].distance;
                 target = entity;
             }
+            hitDistance = nearestDistance;
             return target != null;
         }
 
@@ -93,7 +127,10 @@ namespace ShotGame.Gameplay.Projectile
         {
             if (target.Category == EntityCategory.Wall) return;
             if (target is IDamageable damageable)
-                damageable.TakeDamage(new DamageRequest(SourceId, SourceTeam, _damage));
+            {
+                _hitEntityIds.Add(target.Id);
+                damageable.TakeDamage(new DamageRequest(SourceId, SourceTeam, _damage, Owner.Id));
+            }
         }
 
         private void RequestDespawn()

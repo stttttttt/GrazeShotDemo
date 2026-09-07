@@ -118,6 +118,16 @@ namespace ShotGame.Gameplay.World
             FlushChanges();
         }
 
+        public void UnscaledTick(float unscaledDeltaTime)
+        {
+            if (!IsRunning || !IsSimulationEnabled || _disposed) return;
+            _isUpdating = true;
+            for (var i = 0; i < _entities.Count && IsRunning; i++)
+                _entities[i].UnscaledTick(unscaledDeltaTime);
+            _isUpdating = false;
+            FlushChanges();
+        }
+
         public void SetSimulationEnabled(bool enabled)
         {
             if (IsRunning) IsSimulationEnabled = enabled;

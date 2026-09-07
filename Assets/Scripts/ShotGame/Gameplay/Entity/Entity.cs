@@ -79,6 +79,13 @@ namespace ShotGame.Gameplay.Entity
                 if (_components[i] is IEntityFixedTickable tickable) tickable.FixedTick(fixedDeltaTime);
         }
 
+        public void UnscaledTick(float unscaledDeltaTime)
+        {
+            if (!CanUpdate()) return;
+            for (var i = 0; i < _components.Count; i++)
+                if (_components[i] is IEntityUnscaledTickable tickable) tickable.UnscaledTick(unscaledDeltaTime);
+        }
+
         public void Kill() => IsAlive = false;
 
         public virtual void Dispose()

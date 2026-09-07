@@ -1,14 +1,19 @@
 using System;
 using System.Threading.Tasks;
 using GameFoundation.Core;
+using ShotGame.Gameplay.Facts;
 using ShotGame.Gameplay.Scene;
+using ShotGame.Presentation.UI;
 
 namespace ShotGame.GameFlow.States
 {
     internal sealed class GameplayState : AppFlowState
     {
         private static readonly UIPageId GameplayHudPage = new UIPageId("Gameplay");
+        private static readonly UIPageId GameplayResultPage = new UIPageId("GameplayResult");
         private static readonly SceneId GameplayScene = new SceneId("GamePlay");
+        private IDisposable _settlementSubscription;
+        private bool _isHandlingResult;
 
         public GameplayState(AppFlowContext context) : base(context)
         {
@@ -21,12 +26,25 @@ namespace ShotGame.GameFlow.States
             if (Context.Session != null)
             {
                 ResumeGameplay();
+                SubscribeToSettlement();
                 return;
             }
 
+            await StartNewGameplayAsync();
+        }
+
+        public override Task ExitAsync()
+        {
+            _settlementSubscription?.Dispose();
+            _settlementSubscription = null;
+            return Task.CompletedTask;
+        }
+
+        private async Task StartNewGameplayAsync()
+        {
+            _isHandlingResult = false;
             Context.InputMode.SetMode(InputMode.Disabled);
-            Context.Time.SetPaused(false);
-            Context.Time.SetTimeScale(1f);
+            Context.Time.Reset();
 
             try
             {
@@ -37,6 +55,7 @@ namespace ShotGame.GameFlow.States
                 await Context.CreateSessionAsync(sceneContext);
 
                 await Context.UI.OpenAsync(GameplayHudPage, Context.Session);
+                SubscribeToSettlement();
                 Context.InputMode.SetMode(InputMode.Gameplay);
             }
             catch
@@ -53,6 +72,48 @@ namespace ShotGame.GameFlow.States
 
             Context.InputMode.SetMode(InputMode.Gameplay);
             Context.Time.SetPaused(false);
+        }
+
+        private void SubscribeToSettlement()
+        {
+            _settlementSubscription?.Dispose();
+            _settlementSubscription = Context.Session.Facts.Subscribe<GameplaySettledFact>(OnGameplaySettled);
+        }
+
+        private async void OnGameplaySettled(GameplaySettledFact fact)
+        {
+            if (_isHandlingResult) return;
+            _isHandlingResult = true;
+            Context.InputMode.SetMode(InputMode.UI);
+            Context.Time.SetPaused(false);
+            try
+            {
+                await Context.UI.OpenAsync(
+                    GameplayResultPage,
+                    new GameplayResultScreenArgs(fact.Result, RestartAsync, ReturnToMenuAsync));
+            }
+            catch (Exception exception)
+            {
+                _isHandlingResult = false;
+                UnityEngine.Debug.LogException(exception);
+            }
+        }
+
+        private async Task RestartAsync()
+        {
+            Context.UI.Close(GameplayResultPage);
+            Context.UI.Close(GameplayHudPage);
+            _settlementSubscription?.Dispose();
+            _settlementSubscription = null;
+            await Context.StopGameplayAsync();
+            _isHandlingResult = false;
+            await StartNewGameplayAsync();
+        }
+
+        private Task ReturnToMenuAsync()
+        {
+            Context.UI.Close(GameplayResultPage);
+            return Context.ChangeStateAsync(AppState.MainMenu);
         }
     }
 }

@@ -22,3 +22,6 @@ MonoBehaviour:
   - _id:
       _value: UI_Pause
     _asset: {fileID: 3515005559889111599, guid: f9b14936a74384140916871f8de0b665, type: 3}
+  - _id:
+      _value: UI_GameplayResult
+    _asset: {fileID: 1703642455592619759, guid: 0b23b03b156c6f84d895a39e7189ec17, type: 3}

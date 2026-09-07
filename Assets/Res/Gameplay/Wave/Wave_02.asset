@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b851e7951ca34607ae7fbb9972707be1, type: 3}
+  m_Name: Wave_02
+  m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Config.WaveDefinition
+  _waveId: wave_02
+  _displayName: "\u7B2C 2 \u6CE2 \xB7 \u5DE6\u53F3\u5939\u51FB"
+  _objectiveType: 0
+  _intervalOverride: -1
+  _maxAliveEnemies: 3
+  _explicitGroups:
+  - _enemy: {fileID: 11400000, guid: cd07908bb467fa649b231099d66ccc34, type: 2}
+    _spawnGroup: Side
+    _count: 2
+    _startDelay: 0
+    _spawnInterval: 0.8
+    _requiredForClear: 1
+    _isKeyTarget: 0
+  _randomPool: []
+  _randomBudget: 0
+  _randomStartDelay: 1
+  _randomSpawnInterval: 0.8

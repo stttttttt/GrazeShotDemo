@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d467e61c56874d49b88369fb380dc90c, type: 3}
+  m_Name: ChaserEnemy
+  m_EditorClassIdentifier: ShotGame.Gameplay::ShotGame.Gameplay.Config.EnemyConfig
+  _enemyId: ChaserEnemy
+  _displayName: "\u8FFD\u51FB\u654C\u4EBA"
+  _prefab: {fileID: 5963290648294249776, guid: 4cfdd8749b7021f489afa988d8d9f8ce, type: 3}
+  _weapon: {fileID: 11400000, guid: c6e0d1080f8848b48ba9a0719e28d4d4, type: 2}
+  _maxHealth: 28
+  _moveSpeed: 3.2
+  _attackRange: 4
+  _initialAttackDelay: 0.8
+  _budgetCost: 1

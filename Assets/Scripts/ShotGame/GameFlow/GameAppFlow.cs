@@ -171,7 +171,13 @@ namespace ShotGame.GameFlow
                 return;
 
             if (_machine.CurrentState == AppState.Gameplay)
-                ChangeStateFromTick(AppState.Pause);
+            {
+                var runState = _context.Session?.Run.State;
+                if (runState == Gameplay.Run.GameplayRunState.Countdown ||
+                    runState == Gameplay.Run.GameplayRunState.WaveActive ||
+                    runState == Gameplay.Run.GameplayRunState.WaveInterval)
+                    ChangeStateFromTick(AppState.Pause);
+            }
             else if (_machine.CurrentState == AppState.Pause)
                 ChangeStateFromTick(AppState.Gameplay);
         }
