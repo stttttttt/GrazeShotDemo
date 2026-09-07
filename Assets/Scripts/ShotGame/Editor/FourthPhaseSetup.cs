@@ -50,12 +50,12 @@ namespace ShotGame.Editor
                     "EnemyProjectile", new Color(1f, 0.25f, 0.2f), enemyProjectileLayer, 0.13f);
 
                 var shotgun = CreateWeapon(ShotgunPath, "散弹枪", WeaponFireMode.SemiAutomatic,
-                    6, 12, 0.45f, 1.2f, playerProjectile, 5, 24f, 8f, 16f, 1.2f, 0.13f, 7f, 0.55f);
+                    6, 12, 0.45f, 1.2f, playerProjectile, 5, 24f, 8f, 16f, 1.2f, 0.13f, 2.2f, 0.55f);
                 var smg = CreateWeapon(SmgPath, "冲锋枪", WeaponFireMode.Automatic,
-                    24, 48, 0.1f, 1f, smgProjectile, 1, 4f, 5f, 20f, 1.1f, 0.09f, 1.2f, 0.5f);
+                    24, 48, 0.1f, 1f, smgProjectile, 1, 4f, 5f, 20f, 1.1f, 0.09f, 0.35f, 0.5f);
                 var sniper = CreateWeapon(SniperPath, "狙击枪", WeaponFireMode.SemiAutomatic,
                     1, 6, 0.18f, 1.1f, sniperProjectile, 1, 0f, 40f, 32f, 1.5f, 0.11f,
-                    10f, 0.7f, 5);
+                    1.4f, 0.7f, 5);
                 var enemyGun = CreateWeapon(EnemyGunPath, "测试敌弹", WeaponFireMode.Automatic,
                     8, 999, 0.8f, 1.5f, enemyProjectile, 1, 0f, 10f, 6f, 4f, 0.13f, 0f, 0.5f);
 

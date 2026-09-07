@@ -26,5 +26,5 @@ MonoBehaviour:
   _projectileSpeed: 20
   _projectileLifetime: 1.1
   _projectileRadius: 0.09
-  _recoilImpulse: 1.2
+  _recoilImpulse: 0.35
   _muzzleOffset: 0.5

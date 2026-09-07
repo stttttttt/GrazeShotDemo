@@ -27,5 +27,5 @@ MonoBehaviour:
   _projectileLifetime: 1.5
   _projectileRadius: 0.11
   _penetrations: 5
-  _recoilImpulse: 10
+  _recoilImpulse: 1.4
   _muzzleOffset: 0.7

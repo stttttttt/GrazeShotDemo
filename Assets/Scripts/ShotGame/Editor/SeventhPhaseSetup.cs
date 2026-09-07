@@ -32,6 +32,8 @@ namespace ShotGame.Editor
         private const string MarkerPath = "Assets/Scripts/ShotGame/Editor/SeventhPhaseSetupComplete.asset";
         private const string ExpansionMarkerPath =
             "Assets/Scripts/ShotGame/Editor/GameplayExpansionSetupComplete.asset";
+        private const string ReloadUiMarkerPath =
+            "Assets/Scripts/ShotGame/Editor/ReloadUiSetupComplete.asset";
 
         [InitializeOnLoadMethod]
         private static void ExecuteOnceAfterCompile()
@@ -55,6 +57,30 @@ namespace ShotGame.Editor
                 CreateMarker(ExpansionMarkerPath);
                 AssetDatabase.SaveAssets();
                 Debug.Log("Gameplay HUD 已更新：精简冲击波指示器并加入按键说明。");
+            };
+        }
+
+        [InitializeOnLoadMethod]
+        private static void AddReloadUiOnce()
+        {
+            if (Application.isBatchMode) return;
+            if (AssetDatabase.LoadAssetAtPath<SeventhPhaseSetupMarker>(ReloadUiMarkerPath) != null) return;
+            EditorApplication.delayCall += () =>
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(HealthBarPath) == null) return;
+                var root = PrefabUtility.LoadPrefabContents(HealthBarPath);
+                try
+                {
+                    var view = root.GetComponent<WorldHealthBarView>();
+                    if (view == null) return;
+                    view.SetReloadProgress(true, 0f);
+                    view.SetReloadProgress(false, 0f);
+                    PrefabUtility.SaveAsPrefabAsset(root, HealthBarPath);
+                    CreateMarker(ReloadUiMarkerPath);
+                    AssetDatabase.SaveAssets();
+                    Debug.Log("玩家头顶血条已加入换弹进度 UI。");
+                }
+                finally { PrefabUtility.UnloadPrefabContents(root); }
             };
         }
 
@@ -249,6 +275,9 @@ namespace ShotGame.Editor
                 so.FindProperty("_delayedDamageFill").objectReferenceValue = delayed;
                 so.FindProperty("_canvasGroup").objectReferenceValue = root.GetComponent<CanvasGroup>();
                 so.ApplyModifiedPropertiesWithoutUndo();
+                var view = root.GetComponent<WorldHealthBarView>();
+                view.SetReloadProgress(true, 0f);
+                view.SetReloadProgress(false, 0f);
                 root.SetActive(false);
                 var prefab = PrefabUtility.SaveAsPrefabAsset(root, HealthBarPath);
                 return prefab.GetComponent<WorldHealthBarView>();

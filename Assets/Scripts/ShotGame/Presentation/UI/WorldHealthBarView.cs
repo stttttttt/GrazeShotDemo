@@ -9,6 +9,9 @@ namespace ShotGame.Presentation.UI
         [SerializeField] private Image _immediateFill;
         [SerializeField] private Image _delayedDamageFill;
         [SerializeField] private CanvasGroup _canvasGroup;
+        [SerializeField] private RectTransform _reloadRoot;
+        [SerializeField] private Image _reloadFill;
+        [SerializeField] private Text _reloadText;
         private float _target;
         private float _immediateValue = 1f;
         private float _delayedValue = 1f;
@@ -16,12 +19,34 @@ namespace ShotGame.Presentation.UI
         private float _impactRemaining;
         private Vector2 _screenPosition;
 
-        public void SetStyle(Color immediateColor, Color delayedColor, Vector2 size)
+        public void SetStyle(Color immediateColor, Color delayedColor, Vector2 size,
+            bool supportsReload = false)
         {
             if (_immediateFill != null) _immediateFill.color = immediateColor;
             if (_delayedDamageFill != null) _delayedDamageFill.color = delayedColor;
             var rect = transform as RectTransform;
             if (rect != null) rect.sizeDelta = size;
+            if (supportsReload)
+            {
+                EnsureReloadUi(size);
+                SetReloadProgress(false, 0f);
+            }
+            else if (_reloadRoot != null) _reloadRoot.gameObject.SetActive(false);
+        }
+
+        /// <summary>显示玩家当前武器的换弹进度；非换弹状态立即隐藏。</summary>
+        public void SetReloadProgress(bool reloading, float progress)
+        {
+            if (_reloadRoot == null)
+            {
+                if (!reloading) return;
+                EnsureReloadUi((transform as RectTransform)?.sizeDelta ?? new Vector2(112f, 14f));
+            }
+            _reloadRoot.gameObject.SetActive(reloading);
+            if (!reloading) return;
+            progress = Mathf.Clamp01(progress);
+            if (_reloadFill != null) _reloadFill.fillAmount = progress;
+            if (_reloadText != null) _reloadText.text = "换弹中";
         }
 
         public void Show(float normalized, bool visible)
@@ -91,6 +116,73 @@ namespace ShotGame.Presentation.UI
         {
             if (image == null) return;
             image.fillAmount = Mathf.Clamp01(normalized);
+        }
+
+        private void EnsureReloadUi(Vector2 healthBarSize)
+        {
+            if (_reloadRoot != null)
+            {
+                LayoutReloadUi(healthBarSize);
+                var sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+                var existingBackground = _reloadRoot.GetComponent<Image>();
+                if (existingBackground != null && existingBackground.sprite == null)
+                    existingBackground.sprite = sprite;
+                if (_reloadFill != null && _reloadFill.sprite == null) _reloadFill.sprite = sprite;
+                return;
+            }
+
+            var rootObject = new GameObject("ReloadProgress", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(Image));
+            rootObject.layer = gameObject.layer;
+            rootObject.transform.SetParent(transform, false);
+            _reloadRoot = rootObject.GetComponent<RectTransform>();
+            _reloadRoot.anchorMin = _reloadRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            _reloadRoot.pivot = new Vector2(0.5f, 0.5f);
+            LayoutReloadUi(healthBarSize);
+            var background = rootObject.GetComponent<Image>();
+            background.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+            background.color = new Color(0.025f, 0.035f, 0.06f, 0.9f);
+            background.raycastTarget = false;
+
+            var fillObject = new GameObject("Fill", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(Image));
+            fillObject.layer = gameObject.layer;
+            fillObject.transform.SetParent(_reloadRoot, false);
+            var fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = new Vector2(2f, 2f);
+            fillRect.offsetMax = new Vector2(-2f, -2f);
+            _reloadFill = fillObject.GetComponent<Image>();
+            _reloadFill.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+            _reloadFill.color = new Color(0.25f, 0.82f, 1f, 1f);
+            _reloadFill.type = Image.Type.Filled;
+            _reloadFill.fillMethod = Image.FillMethod.Horizontal;
+            _reloadFill.fillOrigin = 0;
+            _reloadFill.raycastTarget = false;
+
+            var textObject = new GameObject("Label", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(Text));
+            textObject.layer = gameObject.layer;
+            textObject.transform.SetParent(_reloadRoot, false);
+            var textRect = textObject.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+            _reloadText = textObject.GetComponent<Text>();
+            _reloadText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _reloadText.fontSize = 8;
+            _reloadText.fontStyle = FontStyle.Bold;
+            _reloadText.alignment = TextAnchor.MiddleCenter;
+            _reloadText.color = Color.white;
+            _reloadText.raycastTarget = false;
+        }
+
+        private void LayoutReloadUi(Vector2 healthBarSize)
+        {
+            _reloadRoot.sizeDelta = new Vector2(Mathf.Max(88f, healthBarSize.x * 0.85f), 12f);
+            _reloadRoot.anchoredPosition = new Vector2(0f, healthBarSize.y * 0.5f + 9f);
         }
     }
 }

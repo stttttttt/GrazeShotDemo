@@ -5,6 +5,7 @@ using ShotGame.Gameplay.Config;
 using ShotGame.Gameplay.Entity;
 using ShotGame.Gameplay.Facts;
 using ShotGame.Gameplay.Run;
+using ShotGame.Gameplay.Weapon;
 using ShotGame.Presentation.Feedback;
 using UnityEngine;
 using GameEntity = ShotGame.Gameplay.Entity.Entity;
@@ -236,6 +237,14 @@ namespace ShotGame.Presentation.UI
             var graze = player.GetComponent<GrazeComponent>();
             if (graze != null) _screen.GrazeIndicatorView?.SetShockwaveCharge(graze.IsCharging,
                 graze.Charge01, graze.PreviewRadius);
+            var equipment = player.GetComponent<EquipmentComponent>();
+            if (equipment == null || !_healthBars.TryGetValue(player.Id, out var playerBar)) return;
+            var weapon = equipment.CurrentWeapon;
+            var reloading = weapon.State == WeaponState.Reloading;
+            var reloadProgress = reloading && weapon.Config.ReloadDuration > 0f
+                ? 1f - weapon.ReloadRemaining / weapon.Config.ReloadDuration
+                : 0f;
+            playerBar.View.SetReloadProgress(reloading, reloadProgress);
         }
 
         private HealthBarBinding GetOrCreateHealthBar(GameEntity entity, float maximum)
@@ -251,7 +260,7 @@ namespace ShotGame.Presentation.UI
                 feedbackView != null ? feedbackView.HealthBarAnchor : entity.UnityObject.Transform);
             if (entity.Category == EntityCategory.Player)
                 view.SetStyle(_config.PlayerHealthBarColor, _config.PlayerDelayedHealthBarColor,
-                    _config.PlayerHealthBarSize);
+                    _config.PlayerHealthBarSize, true);
             else
                 view.SetStyle(_config.EnemyHealthBarColor, _config.EnemyDelayedHealthBarColor,
                     _config.EnemyHealthBarSize);

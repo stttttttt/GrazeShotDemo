@@ -22,10 +22,10 @@ MonoBehaviour:
   _projectilePrefab: {fileID: 701341589214670001, guid: 5f4faeaf2288446e855d188cc6139273, type: 3}
   _projectileCount: 8
   _spreadAngle: 60
-  _damage: 4
+  _damage: 10
   _projectileSpeed: 16
   _projectileLifetime: 0.4
   _projectileRadius: 0.08
   _penetrations: 0
-  _recoilImpulse: 7
+  _recoilImpulse: 2.2
   _muzzleOffset: 0.55
